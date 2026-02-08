@@ -12,13 +12,23 @@ import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'RegisterDescription'>;
+const MIN_BIO_LENGTH = 50;
+const MAX_BIO_LENGTH = 1000;
 
 export const RegisterDescriptionScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const {state, updateRegisterDraft} = useAppContext();
   const [bio, setBio] = useState(state.registerDraft.bio || '');
+  const bioLength = bio.length;
 
-  const canContinue = useMemo(() => bio.trim().length > 10, [bio]);
+  const canContinue = useMemo(
+    () => bioLength >= MIN_BIO_LENGTH && bioLength <= MAX_BIO_LENGTH,
+    [bioLength]
+  );
+
+  const handleBioChange = (text: string) => {
+    setBio(text);
+  };
 
   const handleContinue = () => {
     updateRegisterDraft({bio});
@@ -30,23 +40,34 @@ export const RegisterDescriptionScreen: React.FC = () => {
       <AppHeader title="Hakkında" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <KeyboardDismissView style={{flex: 1, padding: 20, gap: 16}}>
-          <Text style={{fontSize: 22, fontWeight: '700', color: palette.textPrimary}}>Kendini tanıt</Text>
-          <TextInput
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Kısaca kendinden bahset"
-            multiline
-            numberOfLines={6}
-            style={{
-              minHeight: 160,
-              textAlignVertical: 'top',
-              borderWidth: 1,
-              borderColor: palette.border,
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 16
-            }}
-          />
+          <View>
+            <TextInput
+              value={bio}
+              onChangeText={handleBioChange}
+              placeholder="Kısaca kendinden bahset"
+              multiline
+              numberOfLines={6}
+              style={{
+                minHeight: 160,
+                textAlignVertical: 'top',
+                borderWidth: 1,
+                borderColor: palette.border,
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 16
+              }}
+            />
+            <Text
+              style={{
+                marginTop: 6,
+                textAlign: 'right',
+                color: bioLength < MIN_BIO_LENGTH || bioLength > MAX_BIO_LENGTH ? '#FF4D4F' : palette.muted,
+                fontSize: 13
+              }}
+            >
+              {bioLength}/{MAX_BIO_LENGTH}
+            </Text>
+          </View>
           <View style={{flex: 1}} />
           <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
         </KeyboardDismissView>
