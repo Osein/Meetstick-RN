@@ -39,7 +39,7 @@ export const RegisterDescriptionScreen: React.FC = () => {
     <Screen background="#fff">
       <AppHeader title="Hakkında" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <KeyboardDismissView style={{flex: 1, padding: 20, gap: 16}}>
+        <KeyboardDismissView style={{flex: 1, paddingHorizontal: 20, paddingTop: 20, gap: 16}}>
           <View>
             <TextInput
               value={bio}
@@ -69,7 +69,9 @@ export const RegisterDescriptionScreen: React.FC = () => {
             </Text>
           </View>
           <View style={{flex: 1}} />
-          <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+          <View style={{marginBottom: 16}}>
+            <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+          </View>
         </KeyboardDismissView>
       </KeyboardAvoidingView>
     </Screen>

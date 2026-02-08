@@ -165,7 +165,7 @@ export const RegisterInfoScreen: React.FC = () => {
     <Screen background="#fff">
       <AppHeader title="Kişisel bilgiler" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <KeyboardDismissView style={{flex: 1, padding: 20, gap: 16}}>
+        <KeyboardDismissView style={{flex: 1, paddingHorizontal: 20, paddingTop: 20, gap: 16}}>
           <View style={{gap: 10}}>
             <Text style={{fontWeight: '600', color: palette.textPrimary}}>Ad Soyad</Text>
             <TextInput
@@ -209,7 +209,9 @@ export const RegisterInfoScreen: React.FC = () => {
           </View>
 
           <View style={{flex: 1}} />
-          <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+          <View style={{marginBottom: 16}}>
+            <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+          </View>
         </KeyboardDismissView>
       </KeyboardAvoidingView>
 
@@ -222,7 +224,7 @@ export const RegisterInfoScreen: React.FC = () => {
         >
           <View style={{flex: 1, justifyContent: 'flex-end'}}>
             <Pressable
-              style={{flex: 1, backgroundColor: 'transparent'}}
+              style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.28)'}}
               onPress={closeIosDatePicker}
             />
             <View

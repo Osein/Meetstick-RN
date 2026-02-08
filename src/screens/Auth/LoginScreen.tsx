@@ -94,7 +94,9 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       />
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <KeyboardDismissView style={{flex: 1, padding: 20, justifyContent: 'space-between'}}>
+        <KeyboardDismissView
+          style={{flex: 1, paddingHorizontal: 20, paddingTop: 20, justifyContent: 'space-between'}}
+        >
           <View>
           <Text style={{color: palette.textSecondary, fontSize: 16, lineHeight: 22}}>
             Doğrulama kodu gönderebilmemiz için numarana ihtiyacımız var.

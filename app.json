@@ -44,6 +44,13 @@
         }
       ],
       "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fotoğraflarını ekleyebilmen için galeri erişimi gerekiyor.",
+          "cameraPermission": "Fotoğraf çekebilmen için kamera erişimi gerekiyor."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "extra": {

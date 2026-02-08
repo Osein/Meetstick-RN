@@ -37,7 +37,7 @@ export const RegisterInterestsScreen: React.FC = () => {
   return (
     <Screen background="#fff">
       <AppHeader title="İlgi alanların" onBack={() => navigation.goBack()} />
-      <View style={{flex: 1, padding: 16}}>
+      <View style={{flex: 1, paddingHorizontal: 16, paddingTop: 16}}>
         <Text style={{fontSize: 22, fontWeight: '700', color: palette.textPrimary, marginBottom: 12}}>
           Seni anlatan en az 3 ilgi alanı seç
         </Text>
@@ -52,7 +52,9 @@ export const RegisterInterestsScreen: React.FC = () => {
           ))}
         </ScrollView>
         <View style={{flex: 1}} />
-        <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+        <View style={{marginBottom: 16}}>
+          <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+        </View>
       </View>
     </Screen>
   );

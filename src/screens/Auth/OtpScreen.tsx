@@ -59,10 +59,12 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   }, [remaining]);
 
   return (
-    <Screen background="#fff">
+      <Screen background="#fff">
       <AppHeader title="Doğrulama" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{flex: 1}} behavior="padding">
-        <KeyboardDismissView style={{flex: 1, padding: 20, justifyContent: 'space-between'}}>
+        <KeyboardDismissView
+          style={{flex: 1, paddingHorizontal: 20, paddingTop: 20, justifyContent: 'space-between'}}
+        >
           <View>
           <Text
             style={{

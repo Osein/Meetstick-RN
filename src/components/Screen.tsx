@@ -8,7 +8,7 @@ type Props = ViewProps & {
   children: React.ReactNode;
 };
 
-export const Screen: React.FC<Props> = ({style, background = palette.background, children, ...rest}) => {
+export const Screen: React.FC<Props> = ({style, background = palette.surface, children, ...rest}) => {
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: background}, style]} {...rest}>
       {children}
