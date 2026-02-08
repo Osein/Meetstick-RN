@@ -1,7 +1,10 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Image, RefreshControl, Text, TouchableOpacity, View} from 'react-native';
+import {FlatList, Image, Linking, Platform, RefreshControl, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
+import * as Application from 'expo-application';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Location from 'expo-location';
 import {dashboardMeetings} from '@/data/mockData';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
@@ -17,6 +20,7 @@ export const DashboardScreen: React.FC = () => {
   const [permission, setPermission] = useState<PermissionState>('DENIED');
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<Meeting[]>([]);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
   useEffect(() => {
     if (permission === 'GRANTED') {
@@ -24,12 +28,69 @@ export const DashboardScreen: React.FC = () => {
     }
   }, [permission]);
 
+  useEffect(() => {
+    const checkPermission = async () => {
+      const current = await Location.getForegroundPermissionsAsync();
+      if (current.granted) {
+        setPermission('GRANTED');
+        return;
+      }
+
+      if (!current.canAskAgain) {
+        setPermission('PERMANENTLY_DENIED');
+        return;
+      }
+
+      setPermission('DENIED');
+    };
+
+    checkPermission().catch(() => {
+      setPermission('DENIED');
+    });
+  }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => {
       setItems(dashboardMeetings);
       setRefreshing(false);
     }, 800);
+  };
+
+  const requestLocationPermission = async () => {
+    if (isRequestingPermission) {
+      return;
+    }
+
+    try {
+      setIsRequestingPermission(true);
+      const result = await Location.requestForegroundPermissionsAsync();
+
+      if (result.granted) {
+        setPermission('GRANTED');
+        return;
+      }
+
+      if (!result.canAskAgain) {
+        setPermission('PERMANENTLY_DENIED');
+        return;
+      }
+
+      setPermission('DENIED');
+    } finally {
+      setIsRequestingPermission(false);
+    }
+  };
+
+  const openSystemSettings = () => {
+    if (Platform.OS === 'android' && Application.applicationId) {
+      IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS, {
+        data: `package:${Application.applicationId}`
+      }).catch(() => undefined);
+      return;
+    }
+
+    Linking.openURL('app-settings:').catch(() => undefined);
   };
 
   const renderContent = () => {
@@ -86,11 +147,8 @@ export const DashboardScreen: React.FC = () => {
           <Text style={styles.cardText}>
             Çevrendeki etkinlikleri gösterebilmek için ayarlardan konum iznine izin ver.
           </Text>
-          <TouchableOpacity
-            onPress={() => setPermission('GRANTED')}
-            style={[styles.button, {backgroundColor: palette.primary}]}
-          >
-            <Text style={{color: '#fff', fontWeight: '600'}}>İzni açtım</Text>
+          <TouchableOpacity onPress={openSystemSettings} style={[styles.button, {backgroundColor: palette.primary}]}>
+            <Text style={{color: '#fff', fontWeight: '600'}}>Ayarlara git</Text>
           </TouchableOpacity>
         </View>
       );
@@ -99,18 +157,11 @@ export const DashboardScreen: React.FC = () => {
     return (
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Konum izni olmadan devam</Text>
-        <Text style={styles.cardText}>Yakındaki etkinlikleri gösterebilmek için konum iznine ihtiyacımız var.</Text>
-        <TouchableOpacity
-          onPress={() => setPermission('GRANTED')}
-          style={[styles.button, {backgroundColor: palette.primary}]}
-        >
+        <Text style={styles.cardText}>
+          Yakınınızdaki etkinlikleri görebilmeniz için konum bilginize ihtiyacımız var.
+        </Text>
+        <TouchableOpacity onPress={requestLocationPermission} style={[styles.button, {backgroundColor: palette.primary}]}>
           <Text style={{color: '#fff', fontWeight: '600'}}>İzin ver</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setPermission('PERMANENTLY_DENIED')}
-          style={[styles.button, {backgroundColor: '#fff', borderWidth: 1, borderColor: palette.border}]}
-        >
-          <Text style={{color: palette.textPrimary}}>Daha sonra</Text>
         </TouchableOpacity>
       </View>
     );
