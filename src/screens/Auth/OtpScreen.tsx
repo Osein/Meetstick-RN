@@ -7,6 +7,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
@@ -53,8 +54,9 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   return (
     <Screen background="#fff">
       <AppHeader title="Doğrulama" onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView style={{flex: 1, padding: 20, justifyContent: 'space-between'}} behavior="padding">
-        <View>
+      <KeyboardAvoidingView style={{flex: 1}} behavior="padding">
+        <KeyboardDismissView style={{flex: 1, padding: 20, justifyContent: 'space-between'}}>
+          <View>
           <Text
             style={{
               color: palette.textSecondary,
@@ -131,9 +133,10 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
           </Pressable>
         </View>
 
-        <View style={{marginBottom: 16}}>
-          <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!isOtpValid} />
-        </View>
+          <View style={{marginBottom: 16}}>
+            <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!isOtpValid} />
+          </View>
+        </KeyboardDismissView>
       </KeyboardAvoidingView>
     </Screen>
   );

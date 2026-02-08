@@ -7,6 +7,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
@@ -35,52 +36,51 @@ export const RegisterInfoScreen: React.FC = () => {
   return (
     <Screen background="#fff">
       <AppHeader title="Kişisel bilgiler" onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView
-        style={{flex: 1, padding: 20, gap: 16}}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <Text style={{fontSize: 22, fontWeight: '700', color: palette.textPrimary}}>Seni tanıyalım</Text>
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardDismissView style={{flex: 1, padding: 20, gap: 16}}>
+          <Text style={{fontSize: 22, fontWeight: '700', color: palette.textPrimary}}>Seni tanıyalım</Text>
 
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Adın Soyadın"
-          style={inputStyle}
-        />
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Adın Soyadın"
+            style={inputStyle}
+          />
 
-        <TextInput
-          value={birthDate}
-          onChangeText={setBirthDate}
-          placeholder="Doğum tarihi (gg.aa.yyyy)"
-          style={inputStyle}
-        />
+          <TextInput
+            value={birthDate}
+            onChangeText={setBirthDate}
+            placeholder="Doğum tarihi (gg.aa.yyyy)"
+            style={inputStyle}
+          />
 
-        <View style={{gap: 10}}>
-          <Text style={{fontWeight: '600', color: palette.textPrimary}}>Cinsiyetin</Text>
-          <View style={{flexDirection: 'row', gap: 8, flexWrap: 'wrap'}}>
-            {genders.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                onPress={() => setGender(item.value)}
-                style={[
-                  {
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: palette.border
-                  },
-                  gender === item.value && {backgroundColor: palette.primaryLight, borderColor: palette.primary}
-                ]}
-              >
-                <Text style={{color: palette.textPrimary, fontWeight: '500'}}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={{gap: 10}}>
+            <Text style={{fontWeight: '600', color: palette.textPrimary}}>Cinsiyetin</Text>
+            <View style={{flexDirection: 'row', gap: 8, flexWrap: 'wrap'}}>
+              {genders.map(item => (
+                <TouchableOpacity
+                  key={item.value}
+                  onPress={() => setGender(item.value)}
+                  style={[
+                    {
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: palette.border
+                    },
+                    gender === item.value && {backgroundColor: palette.primaryLight, borderColor: palette.primary}
+                  ]}
+                >
+                  <Text style={{color: palette.textPrimary, fontWeight: '500'}}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View style={{flex: 1}} />
-        <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+          <View style={{flex: 1}} />
+          <PrimaryButton label="Devam" onPress={handleContinue} disabled={!canContinue} />
+        </KeyboardDismissView>
       </KeyboardAvoidingView>
     </Screen>
   );

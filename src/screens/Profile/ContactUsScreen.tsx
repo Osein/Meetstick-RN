@@ -7,6 +7,7 @@ import {AppHeader} from '@/components/AppHeader';
 import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
 import {PrimaryButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {contactTopics} from '@/data/mockData';
 import {ContactTopic} from '@/types';
 
@@ -25,7 +26,7 @@ export const ContactUsScreen: React.FC = () => {
   return (
     <Screen>
       <AppHeader title="Bize ulaş" onBack={() => navigation.goBack()} />
-      <View style={{padding: 16, gap: 12}}>
+      <KeyboardDismissView style={{padding: 16, gap: 12}}>
         <Text style={{color: palette.textSecondary}}>
           Konu seç ve bize mesaj bırak. Ekip kısa sürede dönüş yapacak.
         </Text>
@@ -69,7 +70,7 @@ export const ContactUsScreen: React.FC = () => {
         />
 
         <PrimaryButton label="Gönder" onPress={handleSubmit} disabled={!selected || message.trim().length < 10} />
-      </View>
+      </KeyboardDismissView>
     </Screen>
   );
 };

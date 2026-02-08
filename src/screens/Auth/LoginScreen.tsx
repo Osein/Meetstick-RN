@@ -9,6 +9,7 @@ import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton} from '@/components/Buttons';
 import {CountryFlagIcon} from '@/components/CountryFlagIcon';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {COUNTRIES, getCountryByCode} from '@/utils/countries';
 
@@ -92,11 +93,9 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
         title="Telefon ile giriş"
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       />
-      <KeyboardAvoidingView
-        style={{flex: 1, padding: 20, justifyContent: 'space-between'}}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View>
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardDismissView style={{flex: 1, padding: 20, justifyContent: 'space-between'}}>
+          <View>
           <Text style={{color: palette.textSecondary, fontSize: 16, lineHeight: 22}}>
             Doğrulama kodu gönderebilmemiz için numarana ihtiyacımız var.
           </Text>
@@ -158,9 +157,10 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
           </Text>
         </View>
 
-        <View style={{marginBottom: 16}}>
-          <PrimaryButton label="Devam" onPress={handleContinue} disabled={!isValid} />
-        </View>
+          <View style={{marginBottom: 16}}>
+            <PrimaryButton label="Devam" onPress={handleContinue} disabled={!isValid} />
+          </View>
+        </KeyboardDismissView>
       </KeyboardAvoidingView>
     </Screen>
   );

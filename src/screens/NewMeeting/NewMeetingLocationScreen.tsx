@@ -6,6 +6,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton, OutlinedButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
@@ -30,7 +31,7 @@ export const NewMeetingLocationScreen: React.FC = () => {
   return (
     <Screen background="#fff">
       <AppHeader title="Konum seç" onBack={() => navigation.goBack()} />
-      <View style={{padding: 16, gap: 16, flex: 1}}>
+      <KeyboardDismissView style={{padding: 16, gap: 16, flex: 1}}>
         <Text style={{color: palette.textSecondary}}>
           Harita entegrasyonu olmadan, adres bilgisini burada paylaşabilirsin.
         </Text>
@@ -56,7 +57,7 @@ export const NewMeetingLocationScreen: React.FC = () => {
         <View style={{flex: 1}} />
         <OutlinedButton label="Geri" onPress={() => navigation.goBack()} />
         <PrimaryButton label="Devam" onPress={handleNext} disabled={!canContinue} />
-      </View>
+      </KeyboardDismissView>
     </Screen>
   );
 };

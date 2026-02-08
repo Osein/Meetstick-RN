@@ -7,6 +7,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton, OutlinedButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
@@ -32,34 +33,33 @@ export const NewMeetingDetailsScreen: React.FC = () => {
   return (
     <Screen background="#fff">
       <AppHeader title="Etkinlik oluştur" onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView
-        style={{flex: 1, padding: 16, gap: 12}}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Başlık"
-          style={input}
-        />
-        <TextInput
-          value={participantCount}
-          onChangeText={setParticipantCount}
-          placeholder="Katılımcı sayısı"
-          keyboardType="number-pad"
-          style={input}
-        />
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Etkinlik açıklaması"
-          multiline
-          numberOfLines={5}
-          style={[input, {height: 140, textAlignVertical: 'top'}]}
-        />
-        <View style={{flex: 1}} />
-        <OutlinedButton label="İptal" onPress={() => navigation.goBack()} />
-        <PrimaryButton label="Devam" onPress={handleNext} disabled={!canContinue} />
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardDismissView style={{flex: 1, padding: 16, gap: 12}}>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Başlık"
+            style={input}
+          />
+          <TextInput
+            value={participantCount}
+            onChangeText={setParticipantCount}
+            placeholder="Katılımcı sayısı"
+            keyboardType="number-pad"
+            style={input}
+          />
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Etkinlik açıklaması"
+            multiline
+            numberOfLines={5}
+            style={[input, {height: 140, textAlignVertical: 'top'}]}
+          />
+          <View style={{flex: 1}} />
+          <OutlinedButton label="İptal" onPress={() => navigation.goBack()} />
+          <PrimaryButton label="Devam" onPress={handleNext} disabled={!canContinue} />
+        </KeyboardDismissView>
       </KeyboardAvoidingView>
     </Screen>
   );

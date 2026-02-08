@@ -9,6 +9,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {deleteReasons} from '@/data/mockData';
 import {DeleteReason} from '@/types';
 import {PrimaryButton} from '@/components/Buttons';
+import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,7 +34,7 @@ export const DeleteAccountScreen: React.FC = () => {
   return (
     <Screen>
       <AppHeader title="Hesabı Sil" onBack={() => navigation.goBack()} />
-      <View style={{padding: 16, gap: 14}}>
+      <KeyboardDismissView style={{padding: 16, gap: 14}}>
         <Text style={{color: palette.textSecondary}}>
           Hesabını silmek istediğine emin misin? Bu işlem geri alınamaz.
         </Text>
@@ -93,7 +94,7 @@ export const DeleteAccountScreen: React.FC = () => {
         ) : null}
 
         <PrimaryButton label="Hesabı Sil" onPress={submit} disabled={!canSubmit} />
-      </View>
+      </KeyboardDismissView>
     </Screen>
   );
 };
