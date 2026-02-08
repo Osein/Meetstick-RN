@@ -1,10 +1,12 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Alert, Text, TextInput, View} from 'react-native';
+import {Alert, Pressable, Text, View} from 'react-native';
+import {OtpInput} from 'react-native-otp-entry';
+import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
-import {PrimaryButton, OutlinedButton} from '@/components/Buttons';
+import {PrimaryButton} from '@/components/Buttons';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
@@ -40,59 +42,99 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
     setRemaining(120);
   };
 
+  const formattedRemaining = useMemo(() => {
+    const minutes = Math.floor(remaining / 60)
+      .toString()
+      .padStart(2, '0');
+    const seconds = (remaining % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  }, [remaining]);
+
   return (
     <Screen background="#fff">
       <AppHeader title="Doğrulama" onBack={() => navigation.goBack()} />
-      <View style={{flex: 1, padding: 20, justifyContent: 'space-between'}}>
+      <KeyboardAvoidingView style={{flex: 1, padding: 20, justifyContent: 'space-between'}} behavior="padding">
         <View>
-          <Text style={{fontSize: 24, fontWeight: '700', color: palette.textPrimary, marginBottom: 8}}>
-            Gelen kodu gir
-          </Text>
-          <Text style={{color: palette.textSecondary}}>
+          <Text
+            style={{
+              color: palette.textSecondary,
+              fontSize: 16,
+              lineHeight: 24
+            }}
+          >
             {displayPhoneNumber} numarasına 6 haneli kod gönderdik.
           </Text>
 
-          <View
-            style={{
-              marginTop: 24,
-              flexDirection: 'row',
-              gap: 12,
-              alignItems: 'center'
-            }}
-          >
-            <TextInput
-              value={otp}
-              onChangeText={setOtp}
-              maxLength={6}
-              keyboardType="number-pad"
-              style={{
-                flex: 1,
-                height: 56,
+          <OtpInput
+            numberOfDigits={6}
+            type="numeric"
+            autoFocus
+            focusColor={palette.primary}
+            onTextChange={setOtp}
+            onFilled={setOtp}
+            theme={{
+              containerStyle: {marginTop: 24},
+              pinCodeContainerStyle: {
                 borderWidth: 1,
                 borderColor: palette.border,
                 borderRadius: 12,
-                paddingHorizontal: 16,
+                height: 56
+              },
+              focusedPinCodeContainerStyle: {
+                borderColor: palette.primary
+              },
+              pinCodeTextStyle: {
                 fontSize: 20,
-                letterSpacing: 6,
-                textAlign: 'center'
-              }}
-            />
-          </View>
-
-          <Text style={{textAlign: 'center', marginTop: 12, color: palette.textSecondary}}>
-            {remaining > 0 ? `Kod tekrar ${remaining}s sonra` : 'Kod ulaşmadı mı?'}
-          </Text>
-
-          <OutlinedButton
-            label="Kodu yeniden gönder"
-            onPress={handleResend}
-            disabled={remaining > 0}
-            style={{marginTop: 12}}
+                color: palette.textPrimary
+              }
+            }}
           />
+
+          {remaining > 0 ? (
+            <Text
+              style={{
+                textAlign: 'center',
+                marginTop: 24,
+                color: palette.textPrimary,
+                fontSize: 16,
+                lineHeight: 24
+              }}
+            >
+              Doğrulama kodu almadıysanız{'\n'}
+              <Text style={{fontWeight: '700'}}>{formattedRemaining}</Text> saniye sonra tekrar isteyebilirsiniz.
+            </Text>
+          ) : (
+            <Text
+              style={{
+                textAlign: 'center',
+                marginTop: 24,
+                color: palette.textPrimary,
+                fontSize: 16,
+                lineHeight: 24
+              }}
+            >
+              Belirtilen süre içerisinde doğrulama{'\n'}kodunu girmediniz.
+            </Text>
+          )}
+
+          <Pressable onPress={handleResend} disabled={remaining > 0} style={{marginTop: 14}}>
+            <Text
+              style={{
+                textAlign: 'center',
+                fontSize: 18,
+                fontWeight: '600',
+                color: remaining > 0 ? palette.muted : '#FF6B6B'
+              }}
+            >
+              Tekrar Gönder
+            </Text>
+          </Pressable>
         </View>
 
-        <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!isOtpValid} />
-      </View>
+        <View style={{marginBottom: 16}}>
+          <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!isOtpValid} />
+        </View>
+      </KeyboardAvoidingView>
     </Screen>
   );
 };

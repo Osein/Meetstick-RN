@@ -31,15 +31,15 @@ const isSvgUrl = (url: string): boolean => {
 
 const pages: {title: string; imageKey: OnboardingImageKey}[] = [
   {
-    title: 'Etkinlikleri keşfet',
+    title: 'Koşuya, konsere, yolculuğa ve diğer etkinliklere beraber katılabileceğin insanları burada bulabilirsin.',
     imageKey: 'discover'
   },
   {
-    title: 'Topluluklarla buluş',
+    title: 'Doğa ve tadım etkinliklerine katılabileceğin, halısaha ve basketbol oynayabileceğin ortam da burada.',
     imageKey: 'communities'
   },
   {
-    title: 'Güvenli ve hızlı eşleşme',
+    title: 'Meetstick ile hemen kayıt olarak etkinliklerini yayınlayabilir, sosyalleşmeye devam edebilirsin',
     imageKey: 'match'
   }
 ];
@@ -139,12 +139,8 @@ export const OnboardingScreen: React.FC = () => {
         {dots}
       </View>
 
-      <View style={{paddingHorizontal: 16, paddingBottom: 32, gap: 12}}>
-        <PrimaryButton label="Telefon ile devam et" onPress={handleContinue} />
-        <OutlinedButton
-          label="Google ile devam et"
-          onPress={() => Alert.alert('Google', 'Bu mock akışta Google girişi devre dışı.')}
-        />
+      <View style={{paddingHorizontal: 16, paddingBottom: 16, gap: 12}}>
+        <PrimaryButton label="Devam Et" onPress={handleContinue} />
       </View>
     </Screen>
   );
