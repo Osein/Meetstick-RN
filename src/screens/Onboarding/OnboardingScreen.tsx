@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Alert, Dimensions, FlatList, Image, Text, View} from 'react-native';
+import {SvgUri} from 'react-native-svg';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '@/navigation/types';
@@ -16,6 +17,17 @@ type OnboardingNav = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>
 
 const splashService = new SplashService();
 const fallbackImageUrl = AppConfigContainer.getInstance().getFallbackImageUrl();
+const imageWidth = width - 48;
+const imageHeight = width * 0.9;
+
+const isSvgUrl = (url: string): boolean => {
+  if (url.startsWith('data:image/svg+xml')) {
+    return true;
+  }
+
+  const sanitized = url.split('?')[0];
+  return sanitized.toLowerCase().endsWith('.svg');
+};
 
 const pages: {title: string; imageKey: OnboardingImageKey}[] = [
   {
@@ -100,11 +112,25 @@ export const OnboardingScreen: React.FC = () => {
             <Text style={{fontSize: 24, fontWeight: '700', color: palette.textPrimary, textAlign: 'center'}}>
               {item.title}
             </Text>
-            <Image
-              source={{uri: imageUrls[pageIndex] || fallbackImageUrl}}
-              style={{width: '100%', height: width * 0.9, marginTop: 32, borderRadius: 24}}
-              resizeMode="cover"
-            />
+            <View
+              style={{
+                width: imageWidth,
+                height: imageHeight,
+                marginTop: 32,
+                borderRadius: 24,
+                overflow: 'hidden'
+              }}
+            >
+              {isSvgUrl(imageUrls[pageIndex] || fallbackImageUrl) ? (
+                <SvgUri width={imageWidth} height={imageHeight} uri={imageUrls[pageIndex] || fallbackImageUrl} />
+              ) : (
+                <Image
+                  source={{uri: imageUrls[pageIndex] || fallbackImageUrl}}
+                  style={{width: '100%', height: '100%'}}
+                  resizeMode="cover"
+                />
+              )}
+            </View>
           </View>
         )}
       />

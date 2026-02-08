@@ -11,7 +11,7 @@ import {useAppContext} from '@/context/AppContext';
 type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 
 export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
-  const {phoneNumber, otpEndTime} = route.params;
+  const {phoneNumber, displayPhoneNumber, otpEndTime} = route.params;
   const {loginWithPhone} = useAppContext();
   const [otp, setOtp] = useState('');
   const [remaining, setRemaining] = useState(() =>
@@ -49,7 +49,7 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
             Gelen kodu gir
           </Text>
           <Text style={{color: palette.textSecondary}}>
-            {phoneNumber} numarasına 6 haneli kod gönderdik.
+            {displayPhoneNumber} numarasına 6 haneli kod gönderdik.
           </Text>
 
           <View

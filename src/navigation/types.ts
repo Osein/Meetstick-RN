@@ -1,7 +1,10 @@
+import {CountryCode} from 'libphonenumber-js';
+
 export type RootStackParamList = {
   Onboarding: undefined;
-  Login: undefined;
-  Otp: {phoneNumber: string; otpEndTime: number};
+  Login: {selectedCountry?: CountryCode} | undefined;
+  CountryPicker: undefined;
+  Otp: {phoneNumber: string; displayPhoneNumber: string; otpEndTime: number};
   Welcome: {registrationToken: string};
   RegisterInfo: undefined;
   RegisterDescription: undefined;

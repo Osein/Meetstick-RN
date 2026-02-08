@@ -1,7 +1,8 @@
 import React, {useMemo, useState} from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
-import {KeyboardAvoidingView, Platform, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {Platform, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';

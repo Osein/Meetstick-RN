@@ -1,9 +1,10 @@
-import React, {useEffect, useMemo} from 'react';
-import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
+import React, {useMemo} from 'react';
+import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from '@/navigation/types';
 import {OnboardingScreen} from '@/screens/Onboarding/OnboardingScreen';
 import {LoginScreen} from '@/screens/Auth/LoginScreen';
+import {CountryPickerScreen} from '@/screens/Auth/CountryPickerScreen';
 import {OtpScreen} from '@/screens/Auth/OtpScreen';
 import {WelcomeScreen} from '@/screens/Auth/WelcomeScreen';
 import {RegisterInfoScreen} from '@/screens/Register/RegisterInfoScreen';
@@ -26,7 +27,6 @@ import {NewMeetingPhotosScreen} from '@/screens/NewMeeting/NewMeetingPhotosScree
 import {useAppContext} from '@/context/AppContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const {state} = useAppContext();
@@ -37,20 +37,12 @@ export const AppNavigator: React.FC = () => {
     return 'MainTabs';
   }, [state.onboardingComplete, state.user]);
 
-  useEffect(() => {
-    if (navigationRef.isReady()) {
-      navigationRef.reset({
-        index: 0,
-        routes: [{name: startRoute as keyof RootStackParamList}]
-      });
-    }
-  }, [startRoute]);
-
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{headerShown: false}} initialRouteName={startRoute as keyof RootStackParamList}>
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="CountryPicker" component={CountryPickerScreen} />
         <Stack.Screen name="Otp" component={OtpScreen} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="RegisterInfo" component={RegisterInfoScreen} />

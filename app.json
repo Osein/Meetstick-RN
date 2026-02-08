@@ -4,7 +4,7 @@
     "slug": "meetstick-expo",
     "version": "0.0.1",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app-icon.png",
     "scheme": "meetstick",
     "userInterfaceStyle": "light",
     "splash": {
@@ -34,7 +34,22 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#232323",
+          "image": "./assets/app-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-localization"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "702c8aec-f37a-4765-8944-b9256d4d6f87"
+      }
+    },
+    "owner": "osein"
   }
 }
