@@ -12,6 +12,8 @@ import {CountryFlagIcon} from '@/components/CountryFlagIcon';
 import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {COUNTRIES, getCountryByCode} from '@/utils/countries';
+import {loginWithPhoneNumber} from '@/services/auth/authService';
+import {showErrorToast} from '@/services/ui/toastService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -33,6 +35,7 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const [selectedCountry, setSelectedCountry] = useState(getInitialCountry);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneDigits, setPhoneDigits] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const code = route.params?.selectedCountry;
@@ -59,6 +62,7 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const fullPhoneNumber = parsedPhoneNumber?.number;
   const displayPhoneNumber = parsedPhoneNumber?.formatInternational();
   const isValid = Boolean(parsedPhoneNumber?.isValid());
+  const requestPhoneNumber = fullPhoneNumber?.replace(/\s+/g, '').trim() ?? '';
 
   const handlePhoneChange = (text: string) => {
     const parsed = parseIncompletePhoneNumber(text);
@@ -79,12 +83,31 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
     setPhoneInput(formatted);
   };
 
-  const handleContinue = () => {
-    if (!isValid || !fullPhoneNumber || !displayPhoneNumber) {
+  const handleContinue = async () => {
+    if (
+      !isValid ||
+      !displayPhoneNumber ||
+      !fullPhoneNumber ||
+      requestPhoneNumber.length === 0 ||
+      isSubmitting
+    ) {
       return;
     }
-    const otpEndTime = Date.now() + 2 * 60 * 1000;
-    navigation.navigate('Otp', {phoneNumber: fullPhoneNumber, displayPhoneNumber, otpEndTime});
+
+    try {
+      setIsSubmitting(true);
+      const response = await loginWithPhoneNumber({phoneNumber: requestPhoneNumber});
+      navigation.navigate('Otp', {
+        phoneNumber: fullPhoneNumber,
+        displayPhoneNumber,
+        otpEndTime: response.otpEndTime
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Giriş başlatılamadı. Lütfen tekrar dene.';
+      showErrorToast(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -160,7 +183,12 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
         </View>
 
           <View style={{marginBottom: 16}}>
-            <PrimaryButton label="Devam" onPress={handleContinue} disabled={!isValid} />
+            <PrimaryButton
+              label="Devam"
+              onPress={handleContinue}
+              disabled={!isValid || isSubmitting}
+              loading={isSubmitting}
+            />
           </View>
         </KeyboardDismissView>
       </KeyboardAvoidingView>

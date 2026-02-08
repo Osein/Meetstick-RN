@@ -4,6 +4,8 @@ import {StatusBar} from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {KeyboardProvider} from 'react-native-keyboard-controller';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {Toasts} from '@backpackapp-io/react-native-toast';
 import {AppNavigator} from '@/navigation/AppNavigator';
 import {AppProvider} from '@/context/AppContext';
 import {SplashService} from '@/services/splash/splashService';
@@ -48,12 +50,15 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
       {appReady ? (
-        <KeyboardProvider>
-          <AppProvider>
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </AppProvider>
-        </KeyboardProvider>
+        <SafeAreaProvider>
+          <KeyboardProvider>
+            <AppProvider>
+              <StatusBar style="dark" />
+              <AppNavigator />
+              <Toasts />
+            </AppProvider>
+          </KeyboardProvider>
+        </SafeAreaProvider>
       ) : null}
     </GestureHandlerRootView>
   );
