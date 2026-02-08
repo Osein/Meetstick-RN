@@ -100,16 +100,10 @@ export const ProfileScreen: React.FC = () => {
           }}
         >
           {menuItem('Hesabı sil', () => navigation.navigate('DeleteAccount'), true)}
-        </View>
-
-        <View style={{marginTop: 16}}>
-          <OutlinedButton
-            label="Çıkış yap"
-            onPress={() => {
-              logout();
-              navigation.reset({index: 0, routes: [{name: 'Login'}]});
-            }}
-          />
+          {menuItem('Çıkış yap', () => {
+            logout();
+            navigation.reset({index: 0, routes: [{name: 'Login'}]});
+          }, true)}
         </View>
       </ScrollView>
     </Screen>
