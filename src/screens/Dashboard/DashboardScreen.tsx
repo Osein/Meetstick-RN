@@ -1,7 +1,7 @@
-import React, {useEffect, useState} from 'react';
-import {FlatList, Image, Linking, Platform, RefreshControl, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useEffect, useState} from 'react';
+import {AppState, FlatList, Image, Linking, Platform, RefreshControl, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
@@ -28,8 +28,8 @@ export const DashboardScreen: React.FC = () => {
     }
   }, [permission]);
 
-  useEffect(() => {
-    const checkPermission = async () => {
+  const refreshLocationPermission = useCallback(async () => {
+    try {
       const current = await Location.getForegroundPermissionsAsync();
       if (current.granted) {
         setPermission('GRANTED');
@@ -42,12 +42,32 @@ export const DashboardScreen: React.FC = () => {
       }
 
       setPermission('DENIED');
-    };
-
-    checkPermission().catch(() => {
+    } catch {
       setPermission('DENIED');
-    });
+    }
   }, []);
+
+  useEffect(() => {
+    refreshLocationPermission();
+  }, [refreshLocationPermission]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshLocationPermission();
+    }, [refreshLocationPermission])
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        refreshLocationPermission();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshLocationPermission]);
 
   const onRefresh = () => {
     setRefreshing(true);
