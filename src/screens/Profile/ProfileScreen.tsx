@@ -1,18 +1,19 @@
 import React from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
+import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import {Image, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
 import {useAppContext} from '@/context/AppContext';
-import {OutlinedButton} from '@/components/Buttons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const tabBarHeight = useBottomTabBarHeight();
   const {state, logout} = useAppContext();
   const user = state.user;
 
@@ -34,7 +35,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <Screen>
       <AppHeader title="Profil" />
-      <ScrollView contentContainerStyle={{padding: 16}}>
+      <ScrollView contentContainerStyle={{padding: 16, paddingBottom: tabBarHeight + 16}}>
         <View
           style={{
             flexDirection: 'row',
@@ -52,7 +53,7 @@ export const ProfileScreen: React.FC = () => {
             style={{width: 72, height: 72, borderRadius: 36, backgroundColor: palette.border}}
           />
           <View style={{flex: 1}}>
-            <Text style={{fontSize: 18, fontWeight: '700', color: palette.textPrimary}}>
+            <Text style={{fontSize: 18, fontWeight: '700', color: palette.textPrimary, marginBottom: 4}}>
               {user?.name || 'Meetstick Üyesi'}
             </Text>
             <Text style={{color: palette.textSecondary}}>{user?.email || user?.phoneNumber}</Text>

@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {FlatList, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
+import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import {categories as mockCategories} from '@/data/mockData';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
@@ -13,6 +14,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const CategoriesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const tabBarHeight = useBottomTabBarHeight();
   const [items, setItems] = useState<EventCategory[]>(mockCategories);
 
   const toggleFavorite = (category: EventCategory) => {
@@ -52,7 +54,12 @@ export const CategoriesScreen: React.FC = () => {
   return (
     <Screen>
       <AppHeader title="Kategoriler" />
-      <FlatList data={items} keyExtractor={item => item.id.toString()} renderItem={renderItem} />
+      <FlatList
+        data={items}
+        keyExtractor={item => item.id.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={{paddingBottom: tabBarHeight + 16}}
+      />
     </Screen>
   );
 };

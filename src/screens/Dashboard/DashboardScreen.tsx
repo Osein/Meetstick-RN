@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
@@ -26,6 +27,7 @@ type PermissionState = 'GRANTED' | 'DENIED' | 'PERMANENTLY_DENIED';
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const tabBarHeight = useBottomTabBarHeight();
   const [permission, setPermission] = useState<PermissionState>('DENIED');
   const [refreshing, setRefreshing] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
@@ -190,7 +192,7 @@ export const DashboardScreen: React.FC = () => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, {paddingBottom: tabBarHeight + 16}]}
         >
           <View>
             <Text style={styles.sectionTitle}>Öne çıkan etkinlikler</Text>
@@ -253,7 +255,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 32,
     gap: 16
   },
   sectionTitle: {

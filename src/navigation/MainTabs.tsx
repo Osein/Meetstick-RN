@@ -7,10 +7,11 @@ import {CategoriesScreen} from '@/screens/Categories/CategoriesScreen';
 import {MessagesScreen} from '@/screens/Messages/MessagesScreen';
 import {ProfileScreen} from '@/screens/Profile/ProfileScreen';
 import {palette} from '@/theme/colors';
-import {TouchableOpacity, View} from 'react-native';
+import {View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '@/navigation/types';
+import {FloatingTabBar} from '@/navigation/FloatingTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -21,10 +22,12 @@ export const MainTabs: React.FC = () => {
 
   return (
     <Tab.Navigator
+      tabBar={props => <FloatingTabBar {...props} onCreatePress={() => rootNavigation.navigate('NewMeetingDetails')} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: palette.primary,
-        tabBarInactiveTintColor: palette.muted
+        tabBarInactiveTintColor: palette.muted,
+        sceneStyle: {backgroundColor: palette.background}
       }}
     >
       <Tab.Screen
@@ -48,28 +51,7 @@ export const MainTabs: React.FC = () => {
         component={EmptyScreen}
         options={{
           tabBarLabel: '',
-          tabBarIcon: () => null,
-          tabBarButton: () => (
-            <TouchableOpacity
-              onPress={() => rootNavigation.navigate('NewMeetingDetails')}
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: palette.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: -18,
-                shadowColor: '#000',
-                shadowOpacity: 0.2,
-                shadowOffset: {width: 0, height: 2},
-                shadowRadius: 8,
-                elevation: 6
-              }}
-            >
-              <Ionicons name="add" size={30} color="#fff" />
-            </TouchableOpacity>
-          )
+          tabBarIcon: () => null
         }}
       />
       <Tab.Screen
