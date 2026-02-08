@@ -2,7 +2,9 @@ import React from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
 import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
-import {Image, ScrollView, Text, TouchableOpacity, View} from 'react-native';
+import {Image, Linking, Platform, ScrollView, Text, TouchableOpacity, View} from 'react-native';
+import * as Application from 'expo-application';
+import * as IntentLauncher from 'expo-intent-launcher';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {palette} from '@/theme/colors';
@@ -16,6 +18,17 @@ export const ProfileScreen: React.FC = () => {
   const tabBarHeight = useBottomTabBarHeight();
   const {state, logout} = useAppContext();
   const user = state.user;
+
+  const openAppSettings = () => {
+    if (Platform.OS === 'android' && Application.applicationId) {
+      IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS, {
+        data: `package:${Application.applicationId}`
+      }).catch(() => undefined);
+      return;
+    }
+
+    Linking.openSettings().catch(() => undefined);
+  };
 
   const menuItem = (label: string, onPress: () => void, danger = false) => (
     <TouchableOpacity
@@ -70,7 +83,7 @@ export const ProfileScreen: React.FC = () => {
             borderColor: palette.border
           }}
         >
-          {menuItem('Bildirim ayarları', () => navigation.navigate('NotificationSettings'))}
+          {menuItem('Bildirim ayarları', openAppSettings)}
           {menuItem('Konum ayarları', () => navigation.navigate('LocationSettings'))}
           {menuItem('İzinler', () => navigation.navigate('LocationSettings'))}
         </View>

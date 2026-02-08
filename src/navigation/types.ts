@@ -14,7 +14,6 @@ export type RootStackParamList = {
   EventList: {categoryId: number; categoryTitle: string};
   EventDetail: {eventId: string};
   PersonDetail: {personId: string};
-  NotificationSettings: undefined;
   LocationSettings: undefined;
   Agreements: undefined;
   ContactUs: undefined;

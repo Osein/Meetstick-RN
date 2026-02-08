@@ -15,7 +15,6 @@ import {MainTabs} from '@/navigation/MainTabs';
 import {EventListScreen} from '@/screens/Events/EventListScreen';
 import {EventDetailScreen} from '@/screens/Events/EventDetailScreen';
 import {PersonDetailScreen} from '@/screens/Person/PersonDetailScreen';
-import {NotificationSettingsScreen} from '@/screens/Profile/NotificationSettingsScreen';
 import {LocationSettingsScreen} from '@/screens/Profile/LocationSettingsScreen';
 import {AgreementsScreen} from '@/screens/Profile/AgreementsScreen';
 import {ContactUsScreen} from '@/screens/Profile/ContactUsScreen';
@@ -53,7 +52,6 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="EventList" component={EventListScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="PersonDetail" component={PersonDetailScreen} />
-        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
         <Stack.Screen name="LocationSettings" component={LocationSettingsScreen} />
         <Stack.Screen name="Agreements" component={AgreementsScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />

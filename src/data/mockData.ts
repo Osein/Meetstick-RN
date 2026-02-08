@@ -1,4 +1,4 @@
-import {ContactTopic, DeleteReason, Event, EventCategory, Interest, Meeting, NotificationSettings, Person} from '@/types';
+import {ContactTopic, DeleteReason, Event, EventCategory, Interest, Meeting, Person} from '@/types';
 
 export const interests: Interest[] = [
   {id: 1, title: 'Futbol'},
@@ -252,10 +252,4 @@ export const getEventDetail = (eventId: string, currentUserId = 1): Event => {
     ownerId: isOwner ? currentUserId : 2,
     participantRequests
   };
-};
-
-export const defaultNotificationSettings: NotificationSettings = {
-  newVersionEnabled: true,
-  messagingEnabled: true,
-  featuredEventsEnabled: true
 };

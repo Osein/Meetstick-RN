@@ -1,5 +1,5 @@
 import React, {createContext, useCallback, useContext, useMemo, useState} from 'react';
-import {NewMeetingDraft, NotificationSettings, RegisterDraft, User} from '@/types';
+import {NewMeetingDraft, RegisterDraft, User} from '@/types';
 import {VerifyOtpResponse} from '@/services/auth/authService';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
 import {mapVerifiedProfileToUser} from '@/services/auth/authMappers';
@@ -8,7 +8,6 @@ type AppState = {
   onboardingComplete: boolean;
   user?: User;
   registerDraft: RegisterDraft;
-  notificationSettings: NotificationSettings;
   locationDistanceKm: number;
   newMeetingDraft: NewMeetingDraft;
 };
@@ -24,7 +23,6 @@ type AppContextValue = {
   updateMeetingDraft: (draft: Partial<NewMeetingDraft>) => void;
   resetMeetingDraft: () => void;
   logout: () => void;
-  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   updateLocationDistance: (distance: number) => void;
 };
 
@@ -32,12 +30,6 @@ const defaultRegisterDraft: RegisterDraft = {
   name: '',
   interests: [],
   photos: []
-};
-
-const defaultNotificationSettings: NotificationSettings = {
-  newVersionEnabled: true,
-  messagingEnabled: true,
-  featuredEventsEnabled: true
 };
 
 const defaultMeetingDraft: NewMeetingDraft = {
@@ -58,7 +50,6 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
     onboardingComplete: Boolean(initialUser),
     user: initialUser,
     registerDraft: defaultRegisterDraft,
-    notificationSettings: defaultNotificationSettings,
     locationDistanceKm: 25,
     newMeetingDraft: defaultMeetingDraft
   });
@@ -151,13 +142,6 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
     }));
   }, [secureStorage]);
 
-  const updateNotificationSettings = useCallback((settings: Partial<NotificationSettings>) => {
-    setState(prev => ({
-      ...prev,
-      notificationSettings: {...prev.notificationSettings, ...settings}
-    }));
-  }, []);
-
   const updateLocationDistance = useCallback((distance: number) => {
     setState(prev => ({
       ...prev,
@@ -177,7 +161,6 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
       updateMeetingDraft,
       resetMeetingDraft,
       logout,
-      updateNotificationSettings,
       updateLocationDistance
     }),
     [
@@ -189,7 +172,6 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
       completeRegistration,
       updateRegisterDraft,
       logout,
-      updateNotificationSettings,
       updateLocationDistance,
       updateMeetingDraft,
       resetMeetingDraft

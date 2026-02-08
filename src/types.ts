@@ -64,12 +64,6 @@ export type Meeting = {
   attendeeCount: number;
 };
 
-export type NotificationSettings = {
-  newVersionEnabled: boolean;
-  messagingEnabled: boolean;
-  featuredEventsEnabled: boolean;
-};
-
 export type ContactTopic = {
   id: string;
   displayName: string;
