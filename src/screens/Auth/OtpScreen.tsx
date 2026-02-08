@@ -1,7 +1,7 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Alert, Pressable, Text, View} from 'react-native';
-import {OtpInput} from 'react-native-otp-entry';
+import {OtpInput, OtpInputRef} from 'react-native-otp-entry';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
@@ -16,7 +16,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   const {phoneNumber, displayPhoneNumber, otpEndTime} = route.params;
   const {loginWithPhone} = useAppContext();
+  const otpInputRef = useRef<OtpInputRef>(null);
   const [otp, setOtp] = useState('');
+  const [otpInputKey, setOtpInputKey] = useState(0);
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, Math.floor((otpEndTime - Date.now()) / 1000))
   );
@@ -41,7 +43,10 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
 
   const handleResend = () => {
     Alert.alert('Gönderildi', 'Yeni kod telefonuna gönderildi (mock).');
+    otpInputRef.current?.clear();
+    otpInputRef.current?.setValue('');
     setOtp('');
+    setOtpInputKey(prev => prev + 1);
     setRemaining(120);
   };
 
@@ -70,6 +75,8 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
           </Text>
 
           <OtpInput
+            key={otpInputKey}
+            ref={otpInputRef}
             numberOfDigits={6}
             type="numeric"
             autoFocus
