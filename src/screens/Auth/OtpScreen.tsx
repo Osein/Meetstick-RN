@@ -10,15 +10,18 @@ import {PrimaryButton} from '@/components/Buttons';
 import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
+import {verifyLoginOtp} from '@/services/auth/authService';
+import {showErrorToast} from '@/services/ui/toastService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 
 export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   const {phoneNumber, displayPhoneNumber, otpEndTime} = route.params;
-  const {loginWithPhone} = useAppContext();
+  const {completeLoginWithVerifiedProfile} = useAppContext();
   const otpInputRef = useRef<OtpInputRef>(null);
   const [otp, setOtp] = useState('');
   const [otpInputKey, setOtpInputKey] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, Math.floor((otpEndTime - Date.now()) / 1000))
   );
@@ -31,14 +34,31 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   }, []);
 
   const isOtpValid = useMemo(() => otp.trim().length === 6, [otp]);
-  const canContinue = isOtpValid && remaining > 0;
+  const canContinue = isOtpValid && remaining > 0 && !isVerifying;
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!canContinue) {
       return;
     }
-    loginWithPhone(phoneNumber);
-    navigation.navigate('Welcome', {registrationToken: 'mock-token'});
+
+    try {
+      setIsVerifying(true);
+      const response = await verifyLoginOtp({
+        phoneNumber,
+        otpCode: otp
+      });
+
+      await completeLoginWithVerifiedProfile(response);
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'MainTabs'}]
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kod doğrulanamadı. Lütfen tekrar dene.';
+      showErrorToast(message);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleResend = () => {
@@ -145,7 +165,12 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
         </View>
 
           <View style={{marginBottom: 16}}>
-            <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!canContinue} />
+            <PrimaryButton
+              label="Devam et"
+              onPress={handleVerify}
+              disabled={!canContinue}
+              loading={isVerifying}
+            />
           </View>
         </KeyboardDismissView>
       </KeyboardAvoidingView>

@@ -1,5 +1,8 @@
 import React, {createContext, useCallback, useContext, useMemo, useState} from 'react';
 import {NewMeetingDraft, NotificationSettings, RegisterDraft, User} from '@/types';
+import {VerifyOtpResponse} from '@/services/auth/authService';
+import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
+import {mapVerifiedProfileToUser} from '@/services/auth/authMappers';
 
 type AppState = {
   onboardingComplete: boolean;
@@ -14,6 +17,8 @@ type AppContextValue = {
   state: AppState;
   completeOnboarding: () => void;
   loginWithPhone: (phone: string) => void;
+  setAuthenticatedUser: (user: User) => void;
+  completeLoginWithVerifiedProfile: (profile: VerifyOtpResponse) => Promise<void>;
   completeRegistration: (draftOverride?: Partial<RegisterDraft>) => void;
   updateRegisterDraft: (draft: Partial<RegisterDraft>) => void;
   updateMeetingDraft: (draft: Partial<NewMeetingDraft>) => void;
@@ -44,10 +49,14 @@ const defaultMeetingDraft: NewMeetingDraft = {
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
+export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: User}> = ({
+  children,
+  initialUser
+}) => {
+  const secureStorage = useMemo(() => new MeetstickSecureKeyValueStorage(), []);
   const [state, setState] = useState<AppState>({
-    onboardingComplete: false,
-    user: undefined,
+    onboardingComplete: Boolean(initialUser),
+    user: initialUser,
     registerDraft: defaultRegisterDraft,
     notificationSettings: defaultNotificationSettings,
     locationDistanceKm: 25,
@@ -74,6 +83,27 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
       }
     }));
   }, []);
+
+  const setAuthenticatedUser = useCallback((user: User) => {
+    setState(prev => ({
+      ...prev,
+      onboardingComplete: true,
+      user
+    }));
+  }, []);
+
+  const completeLoginWithVerifiedProfile = useCallback(
+    async (profile: VerifyOtpResponse) => {
+      await secureStorage.saveUserProfile(profile);
+      const mappedUser = mapVerifiedProfileToUser(profile);
+      setState(prev => ({
+        ...prev,
+        onboardingComplete: true,
+        user: mappedUser
+      }));
+    },
+    [secureStorage]
+  );
 
   const completeRegistration = useCallback((draftOverride?: Partial<RegisterDraft>) => {
     setState(prev => {
@@ -114,11 +144,12 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
   }, []);
 
   const logout = useCallback(() => {
+    secureStorage.clearUserProfile().catch(() => undefined);
     setState(prev => ({
       ...prev,
       user: undefined
     }));
-  }, []);
+  }, [secureStorage]);
 
   const updateNotificationSettings = useCallback((settings: Partial<NotificationSettings>) => {
     setState(prev => ({
@@ -139,6 +170,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
       state,
       completeOnboarding,
       loginWithPhone,
+      setAuthenticatedUser,
+      completeLoginWithVerifiedProfile,
       completeRegistration,
       updateRegisterDraft,
       updateMeetingDraft,
@@ -151,6 +184,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
       state,
       completeOnboarding,
       loginWithPhone,
+      setAuthenticatedUser,
+      completeLoginWithVerifiedProfile,
       completeRegistration,
       updateRegisterDraft,
       logout,
@@ -170,4 +205,16 @@ export const useAppContext = (): AppContextValue => {
     throw new Error('useAppContext must be used within AppProvider');
   }
   return ctx;
+};
+
+export const useCurrentUser = (): User | undefined => {
+  return useAppContext().state.user;
+};
+
+export const useRequiredUser = (): User => {
+  const user = useCurrentUser();
+  if (!user) {
+    throw new Error('useRequiredUser called without an authenticated user');
+  }
+  return user;
 };

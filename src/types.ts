@@ -88,6 +88,8 @@ export type User = {
   phoneNumber?: string;
   birthDate?: string;
   gender?: Gender;
+  level?: number;
+  accessToken?: string;
   bio?: string;
   interests: Interest[];
   photos: string[];
