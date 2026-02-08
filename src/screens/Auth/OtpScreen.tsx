@@ -29,9 +29,10 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
   }, []);
 
   const isOtpValid = useMemo(() => otp.trim().length === 6, [otp]);
+  const canContinue = isOtpValid && remaining > 0;
 
   const handleVerify = () => {
-    if (!isOtpValid) {
+    if (!canContinue) {
       return;
     }
     loginWithPhone(phoneNumber);
@@ -40,6 +41,7 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
 
   const handleResend = () => {
     Alert.alert('Gönderildi', 'Yeni kod telefonuna gönderildi (mock).');
+    setOtp('');
     setRemaining(120);
   };
 
@@ -134,7 +136,7 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
         </View>
 
           <View style={{marginBottom: 16}}>
-            <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!isOtpValid} />
+            <PrimaryButton label="Devam et" onPress={handleVerify} disabled={!canContinue} />
           </View>
         </KeyboardDismissView>
       </KeyboardAvoidingView>
