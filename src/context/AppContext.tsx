@@ -8,7 +8,6 @@ type AppState = {
   onboardingComplete: boolean;
   user?: User;
   registerDraft: RegisterDraft;
-  locationDistanceKm: number;
   newMeetingDraft: NewMeetingDraft;
 };
 
@@ -23,7 +22,7 @@ type AppContextValue = {
   updateMeetingDraft: (draft: Partial<NewMeetingDraft>) => void;
   resetMeetingDraft: () => void;
   logout: () => void;
-  updateLocationDistance: (distance: number) => void;
+  updateLocationDistance: (distance: number) => Promise<void>;
 };
 
 const defaultRegisterDraft: RegisterDraft = {
@@ -50,7 +49,6 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
     onboardingComplete: Boolean(initialUser),
     user: initialUser,
     registerDraft: defaultRegisterDraft,
-    locationDistanceKm: 25,
     newMeetingDraft: defaultMeetingDraft
   });
 
@@ -142,12 +140,18 @@ export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: Use
     }));
   }, [secureStorage]);
 
-  const updateLocationDistance = useCallback((distance: number) => {
+  const updateLocationDistance = useCallback(async (distance: number) => {
+    await secureStorage.updateUserProfile({locationDistance: distance});
     setState(prev => ({
       ...prev,
-      locationDistanceKm: distance
+      user: prev.user
+        ? {
+            ...prev.user,
+            locationDistance: distance
+          }
+        : prev.user
     }));
-  }, []);
+  }, [secureStorage]);
 
   const value = useMemo<AppContextValue>(
     () => ({

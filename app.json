@@ -59,6 +59,9 @@
         "projectId": "702c8aec-f37a-4765-8944-b9256d4d6f87"
       }
     },
-    "owner": "osein"
+    "owner": "osein",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

@@ -18,6 +18,7 @@ export type VerifyOtpResponse = {
   phoneNumber?: string;
   email?: string;
   name?: string;
+  locationDistance?: number;
   birthDate?: string;
   gender?: Gender;
   level?: number;

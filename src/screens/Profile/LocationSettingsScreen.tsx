@@ -9,13 +9,41 @@ import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
 import {PrimaryButton} from '@/components/Buttons';
 import {useAppContext} from '@/context/AppContext';
+import {updateLocationDistance as updateLocationDistanceService} from '@/services/user/userService';
+import {showErrorToast, showSuccessToast} from '@/services/ui/toastService';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const LocationSettingsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const {state, updateLocationDistance} = useAppContext();
-  const [distance, setDistance] = React.useState(state.locationDistanceKm);
+  const [distance, setDistance] = React.useState(state.user?.locationDistance ?? 25);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setDistance(state.user?.locationDistance ?? 25);
+  }, [state.user?.locationDistance]);
+
+  const handleSave = async () => {
+    const previousDistance = state.user?.locationDistance ?? 25;
+
+    try {
+      setIsSaving(true);
+      await updateLocationDistanceService({
+        locationDistance: distance,
+        accessToken: state.user?.accessToken
+      });
+      await updateLocationDistance(distance);
+      showSuccessToast('Konum ayarlarınız başarıyla güncellendi');
+    } catch (error) {
+      setDistance(previousDistance);
+      const message =
+        error instanceof Error ? error.message : 'Konum mesafesi güncellenemedi. Lütfen tekrar dene.';
+      showErrorToast(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Screen>
@@ -49,10 +77,9 @@ export const LocationSettingsScreen: React.FC = () => {
         </Text>
         <PrimaryButton
           label="Kaydet"
-          onPress={() => {
-            updateLocationDistance(distance);
-            navigation.goBack();
-          }}
+          onPress={handleSave}
+          disabled={isSaving}
+          loading={isSaving}
         />
       </View>
     </Screen>

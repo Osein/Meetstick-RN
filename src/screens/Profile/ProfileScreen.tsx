@@ -83,9 +83,8 @@ export const ProfileScreen: React.FC = () => {
             borderColor: palette.border
           }}
         >
-          {menuItem('Bildirim ayarları', openAppSettings)}
           {menuItem('Konum ayarları', () => navigation.navigate('LocationSettings'))}
-          {menuItem('İzinler', () => navigation.navigate('LocationSettings'))}
+          {menuItem('İzin ayarları', openAppSettings)}
         </View>
 
         <View

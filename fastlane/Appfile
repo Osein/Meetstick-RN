@@ -1,0 +1,5 @@
+app_identifier("com.meetstick.app")
+package_name("com.meetstick.app")
+
+# EAS auth is required for lanes using eas CLI.
+# export EXPO_TOKEN=...

@@ -18,7 +18,7 @@ export type RootStackParamList = {
   Agreements: undefined;
   ContactUs: undefined;
   DeleteAccount: undefined;
-  WebView: {title: string; url: string};
+  WebView: {title: string; url?: string; htmlContent?: string};
   NewMeetingDetails: undefined;
   NewMeetingLocation: undefined;
   NewMeetingPhotos: undefined;

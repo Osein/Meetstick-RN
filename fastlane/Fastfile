@@ -1,0 +1,177 @@
+require 'time'
+require 'fileutils'
+require 'shellwords'
+require 'plist'
+
+ROOT_DIR = File.expand_path('..', __dir__).freeze
+DIST_DIR = File.join(ROOT_DIR, 'dist').freeze
+IOS_WORKSPACE = 'ios/MeetstickExpo.xcworkspace'.freeze
+IOS_SCHEME = 'MeetstickExpo'.freeze
+IOS_PROJECT = 'ios/MeetstickExpo.xcodeproj'.freeze
+IOS_INFO_PLIST = 'MeetstickExpo/Info.plist'.freeze
+EXPO_TOKEN = 'vjLcx-7aB8m53hfPzdi45sfUZsMOhy2fjqF7NFwD'.freeze
+FIREBASE_CI_TOKEN = '1//03DLH16oKQTRmCgYIARAAGAMSNwF-L9IrUQjAjPcFctrnZ8l459ML-fZcaZV-TAp9SbGQu3l09osd6xAQzJwaiH0gVdZLZjEMy5E'.freeze
+FIREBASE_TESTER_GROUPS = 'meetstick'.freeze
+FIREBASE_ENV_CONFIG = {
+  'dev' => {
+    env: 'dev',
+    bundle_id: 'com.meetstick.app.dev',
+    ios_plist: 'GoogleService-Info-Dev.plist',
+    android_json: 'google-services-dev.json',
+    firebase_app_id: '1:728341494178:ios:f63948d6f63897a26d1afb'
+  },
+  'test' => {
+    env: 'test',
+    bundle_id: 'com.meetstick.app.beta',
+    ios_plist: 'GoogleService-Info-Test.plist',
+    android_json: 'google-services-test.json',
+    firebase_app_id: '1:728341494178:ios:160d2a478f6cbde26d1afb'
+  },
+  'prod' => {
+    env: 'prod',
+    bundle_id: 'com.meetstick.app',
+    ios_plist: 'GoogleService-Info-Prod.plist',
+    android_json: 'google-services-prod.json',
+    firebase_app_id: '1:728341494178:ios:e49826a1446cac2d6d1afb'
+  }
+}.freeze
+
+def release_notes(env_name)
+  ENV['RELEASE_NOTES'] || "#{env_name} build #{Time.now.utc.iso8601}"
+end
+
+def firebase_env_config(env_name)
+  FIREBASE_ENV_CONFIG.fetch(env_name) do
+    UI.user_error!("Unsupported firebase env '#{env_name}'")
+  end
+end
+
+def sync_firebase_service_files(env_name)
+  config = firebase_env_config(env_name)
+  ios_target_dir = File.join(ROOT_DIR, 'ios', IOS_SCHEME)
+  android_target_dir = File.join(ROOT_DIR, 'android', 'app')
+  ios_source = File.join(ROOT_DIR, config[:ios_plist])
+  android_source = File.join(ROOT_DIR, config[:android_json])
+
+  UI.user_error!("Missing iOS firebase config at #{ios_source}") unless File.exist?(ios_source)
+  UI.user_error!("Missing Android firebase config at #{android_source}") unless File.exist?(android_source)
+
+  FileUtils.mkdir_p(ios_target_dir)
+  FileUtils.mkdir_p(android_target_dir)
+  FileUtils.cp(ios_source, File.join(ios_target_dir, 'GoogleService-Info.plist'))
+  FileUtils.cp(android_source, File.join(android_target_dir, 'google-services.json'))
+end
+
+def configure_ios_podfile_for_rnfirebase
+  podfile_path = File.join(ROOT_DIR, 'ios', 'Podfile')
+  return unless File.exist?(podfile_path)
+end
+
+def run_ios_prebuild(env_name:)
+  return if ENV['PREBUILD_BEFORE_BUILD'] == 'false'
+
+  ENV['APP_ENV'] = env_name
+  sh("cd .. && CI=1 APP_ENV=#{env_name} npx expo prebuild --platform ios")
+  sync_firebase_service_files(env_name)
+  configure_ios_podfile_for_rnfirebase
+  sh('cd .. && npx pod-install ios')
+end
+
+def set_bundle_id(bundle_id)
+  update_app_identifier(
+    xcodeproj: IOS_PROJECT,
+    plist_path: IOS_INFO_PLIST,
+    app_identifier: bundle_id
+  )
+end
+
+def build_ios_ipa(env_name:)
+  config = firebase_env_config(env_name)
+  FileUtils.mkdir_p(DIST_DIR)
+  run_ios_prebuild(env_name: env_name)
+  set_bundle_id(config[:bundle_id])
+
+  build_app(
+    workspace: IOS_WORKSPACE,
+    scheme: IOS_SCHEME,
+    configuration: 'Release',
+    clean: true,
+    export_method: 'ad-hoc',
+    output_directory: DIST_DIR,
+    output_name: "MeetstickExpo-#{env_name}.ipa",
+    xcargs: '-allowProvisioningUpdates'
+  )
+end
+
+def upload_to_firebase(app_id:, ipa_path:, notes:)
+  firebase_app_distribution(
+    app: app_id,
+    ipa_path: ipa_path,
+    firebase_cli_token: FIREBASE_CI_TOKEN,
+    groups: FIREBASE_TESTER_GROUPS,
+    release_notes: notes
+  )
+end
+
+def upload_dsym_to_crashlytics(app_id:, dsym_path:)
+  binary_path = Dir[File.join(ROOT_DIR, 'ios', 'Pods', 'FirebaseCrashlytics', 'upload-symbols')].first
+  google_service_info = File.join(ROOT_DIR, 'ios', IOS_SCHEME, 'GoogleService-Info.plist')
+
+  unless binary_path && google_service_info && dsym_path && File.exist?(dsym_path)
+    UI.important('Skipping dSYM upload: upload-symbols binary or GoogleService-Info.plist is missing, so upload_symbols_to_crashlytics cannot run.')
+    return
+  end
+
+  upload_symbols_to_crashlytics(
+    dsym_path: dsym_path,
+    binary_path: binary_path,
+    gsp_path: google_service_info,
+    app_id: app_id
+  )
+end
+
+before_all do
+  ENV['EXPO_TOKEN'] = EXPO_TOKEN
+  xcode_select('/Applications/Xcode.app')
+end
+
+desc 'Build TEST IPA (com.meetstick.app.beta) and upload to Firebase App Distribution'
+lane :test_ipa_to_firebase do |options|
+  notes = options[:message] || release_notes('test')
+  config = firebase_env_config('test')
+  ipa = build_ios_ipa(env_name: 'test')
+  upload_to_firebase(app_id: config[:firebase_app_id], ipa_path: ipa, notes: notes)
+  upload_dsym_to_crashlytics(
+    app_id: config[:firebase_app_id],
+    dsym_path: lane_context[SharedValues::DSYM_OUTPUT_PATH]
+  )
+ensure
+  set_bundle_id(firebase_env_config('prod')[:bundle_id]) if File.exist?(File.join(ROOT_DIR, IOS_PROJECT))
+end
+
+desc 'Build PROD IPA (com.meetstick.app) and upload to Firebase App Distribution'
+lane :prod_ipa_to_firebase do |options|
+  notes = options[:message] || release_notes('prod')
+  config = firebase_env_config('prod')
+  ipa = build_ios_ipa(env_name: 'prod')
+  upload_to_firebase(app_id: config[:firebase_app_id], ipa_path: ipa, notes: notes)
+  upload_dsym_to_crashlytics(
+    app_id: config[:firebase_app_id],
+    dsym_path: lane_context[SharedValues::DSYM_OUTPUT_PATH]
+  )
+ensure
+  set_bundle_id(firebase_env_config('prod')[:bundle_id]) if File.exist?(File.join(ROOT_DIR, IOS_PROJECT))
+end
+
+desc 'Upload latest IPA in dist/ to Firebase TEST app'
+lane :upload_latest_test_ipa do |options|
+  config = firebase_env_config('test')
+  ipa_path = Dir[File.join(DIST_DIR, '*.ipa')].max_by { |f| File.mtime(f) }
+  UI.user_error!('No IPA found in dist/') if ipa_path.to_s.empty?
+  dsym_path = Dir[File.join(DIST_DIR, '*.app.dSYM.zip')].max_by { |f| File.mtime(f) }
+
+  notes = options[:message] || release_notes('test')
+  sync_firebase_service_files('test') if File.exist?(File.join(ROOT_DIR, 'ios'))
+  upload_to_firebase(app_id: config[:firebase_app_id], ipa_path: ipa_path, notes: notes)
+  upload_dsym_to_crashlytics(app_id: config[:firebase_app_id], dsym_path: dsym_path) if dsym_path && !dsym_path.empty?
+end

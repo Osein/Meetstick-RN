@@ -7,6 +7,7 @@ export const mapVerifiedProfileToUser = (profile: VerifyOtpResponse): User => {
     name: profile.name || 'Meetstick User',
     email: profile.email,
     phoneNumber: profile.phoneNumber,
+    locationDistance: profile.locationDistance,
     birthDate: profile.birthDate,
     gender: profile.gender,
     level: profile.level,
@@ -16,4 +17,3 @@ export const mapVerifiedProfileToUser = (profile: VerifyOtpResponse): User => {
     isVerified: true
   };
 };
-

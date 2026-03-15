@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "728341494178",
+    "project_id": "meetstick-afda0",
+    "storage_bucket": "meetstick-afda0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:728341494178:android:99767f30cb11e93c6d1afb",
+        "android_client_info": {
+          "package_name": "com.meetstick.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClxvl9W4EHni710o-tc8kt5Uk-C4d-q5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:728341494178:android:36ff05ca565a22016d1afb",
+        "android_client_info": {
+          "package_name": "com.meetstick.app.beta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClxvl9W4EHni710o-tc8kt5Uk-C4d-q5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:728341494178:android:80c47b32b4b3a0e16d1afb",
+        "android_client_info": {
+          "package_name": "com.meetstick.app.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClxvl9W4EHni710o-tc8kt5Uk-C4d-q5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

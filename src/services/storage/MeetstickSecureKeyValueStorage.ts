@@ -117,4 +117,16 @@ export class MeetstickSecureKeyValueStorage {
   async clearUserProfile(): Promise<void> {
     await AsyncStorage.removeItem(STORAGE_KEY);
   }
+
+  async updateUserProfile(partial: Partial<VerifyOtpResponse>): Promise<void> {
+    const current = await this.getUserProfile();
+    if (!current) {
+      return;
+    }
+
+    await this.saveUserProfile({
+      ...current,
+      ...partial
+    });
+  }
 }

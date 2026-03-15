@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
-import {Alert, FlatList, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {Alert, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {palette} from '@/theme/colors';
@@ -17,6 +17,9 @@ export const ContactUsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [selected, setSelected] = useState<ContactTopic | null>(null);
   const [message, setMessage] = useState('');
+  const messageLength = message.length;
+  const trimmedMessageLength = message.trim().length;
+  const isMessageValid = trimmedMessageLength >= 20 && messageLength <= 1000;
 
   const handleSubmit = () => {
     Alert.alert('Teşekkürler', 'Mesajın iletildi (mock).');
@@ -28,16 +31,12 @@ export const ContactUsScreen: React.FC = () => {
       <AppHeader title="Bize ulaş" onBack={() => navigation.goBack()} />
       <KeyboardDismissView style={{padding: 16, gap: 12}}>
         <Text style={{color: palette.textSecondary}}>
-          Konu seç ve bize mesaj bırak. Ekip kısa sürede dönüş yapacak.
+          Konu seç ve bize mesaj bırak.
         </Text>
-        <FlatList
-          data={contactTopics}
-          keyExtractor={item => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{gap: 8}}
-          renderItem={({item}) => (
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8}}>
+          {contactTopics.map(item => (
             <TouchableOpacity
+              key={item.id}
               onPress={() => setSelected(item)}
               style={{
                 paddingHorizontal: 14,
@@ -50,8 +49,8 @@ export const ContactUsScreen: React.FC = () => {
             >
               <Text style={{color: palette.textPrimary}}>{item.displayName}</Text>
             </TouchableOpacity>
-          )}
-        />
+          ))}
+        </View>
 
         <TextInput
           value={message}
@@ -59,6 +58,7 @@ export const ContactUsScreen: React.FC = () => {
           placeholder="Mesajın"
           multiline
           numberOfLines={5}
+          maxLength={1000}
           style={{
             minHeight: 140,
             borderRadius: 12,
@@ -68,8 +68,17 @@ export const ContactUsScreen: React.FC = () => {
             textAlignVertical: 'top'
           }}
         />
+        <Text
+          style={{
+            alignSelf: 'flex-end',
+            color: trimmedMessageLength < 20 ? palette.primary : palette.textSecondary,
+            marginTop: -4
+          }}
+        >
+          {messageLength}/1000
+        </Text>
 
-        <PrimaryButton label="Gönder" onPress={handleSubmit} disabled={!selected || message.trim().length < 10} />
+        <PrimaryButton label="Gönder" onPress={handleSubmit} disabled={!selected || !isMessageValid} />
       </KeyboardDismissView>
     </Screen>
   );

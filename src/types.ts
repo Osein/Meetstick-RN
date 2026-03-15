@@ -80,6 +80,7 @@ export type User = {
   name: string;
   email?: string;
   phoneNumber?: string;
+  locationDistance?: number;
   birthDate?: string;
   gender?: Gender;
   level?: number;
