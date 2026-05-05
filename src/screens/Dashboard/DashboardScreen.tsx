@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   AppState,
+  ActivityIndicator,
   Image,
   Linking,
   Platform,
@@ -17,25 +18,37 @@ import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
-import {dashboardMeetings, getEventsForCategory} from '@/data/mockData';
 import {Screen} from '@/components/Screen';
 import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
+import {useAppContext} from '@/context/AppContext';
+import {getHomeFeed, HomeEvent, HomeInterestGroup} from '@/services/home/homeService';
+import {showErrorToast} from '@/services/ui/toastService';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-type PermissionState = 'GRANTED' | 'DENIED' | 'PERMANENTLY_DENIED';
+type PermissionState = 'GRANTED' | 'DENIED';
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const {state} = useAppContext();
   const tabBarHeight = useBottomTabBarHeight();
   const [permission, setPermission] = useState<PermissionState>('DENIED');
   const [refreshing, setRefreshing] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [isLoadingHome, setIsLoadingHome] = useState(false);
+  const [homeFeed, setHomeFeed] = useState<{
+    featuredEvents: HomeEvent[];
+    upcomingEvents: HomeEvent[];
+    groupedEvents: HomeInterestGroup[];
+  }>({
+    featuredEvents: [],
+    upcomingEvents: [],
+    groupedEvents: []
+  });
 
-  const featuredMeetings = useMemo(() => dashboardMeetings.slice(0, 4), []);
-  const upcomingMeetings = useMemo(() => dashboardMeetings.slice(4, 6), []);
-  const halisahaItems = useMemo(() => getEventsForCategory(2, 'Halısaha').slice(0, 4), []);
-  const concertItems = useMemo(() => getEventsForCategory(3, 'Konser').slice(0, 3), []);
+  const featuredEvents = useMemo(() => homeFeed.featuredEvents.slice(0, 4), [homeFeed.featuredEvents]);
+  const upcomingEvents = useMemo(() => homeFeed.upcomingEvents.slice(0, 2), [homeFeed.upcomingEvents]);
+  const groupedEvents = useMemo(() => homeFeed.groupedEvents, [homeFeed.groupedEvents]);
 
   const refreshLocationPermission = useCallback(async () => {
     try {
@@ -44,17 +57,31 @@ export const DashboardScreen: React.FC = () => {
         setPermission('GRANTED');
         return;
       }
-
-      if (!current.canAskAgain) {
-        setPermission('PERMANENTLY_DENIED');
-        return;
-      }
-
       setPermission('DENIED');
     } catch {
       setPermission('DENIED');
     }
   }, []);
+
+  const loadHome = useCallback(async () => {
+    try {
+      setIsLoadingHome(true);
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+      const response = await getHomeFeed({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accessToken: state.user?.accessToken
+      });
+      setHomeFeed(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Anasayfa verileri alınamadı.';
+      showErrorToast(message);
+    } finally {
+      setIsLoadingHome(false);
+    }
+  }, [state.user?.accessToken]);
 
   useEffect(() => {
     refreshLocationPermission();
@@ -65,6 +92,15 @@ export const DashboardScreen: React.FC = () => {
       refreshLocationPermission();
     }, [refreshLocationPermission])
   );
+
+  useEffect(() => {
+    if (permission === 'GRANTED') {
+      loadHome();
+      return;
+    }
+
+    requestLocationPermission();
+  }, [permission, loadHome]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
@@ -78,7 +114,7 @@ export const DashboardScreen: React.FC = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    refreshLocationPermission().finally(() => {
+    Promise.all([refreshLocationPermission(), permission === 'GRANTED' ? loadHome() : Promise.resolve()]).finally(() => {
       setTimeout(() => setRefreshing(false), 400);
     });
   };
@@ -96,12 +132,6 @@ export const DashboardScreen: React.FC = () => {
         setPermission('GRANTED');
         return;
       }
-
-      if (!result.canAskAgain) {
-        setPermission('PERMANENTLY_DENIED');
-        return;
-      }
-
       setPermission('DENIED');
     } finally {
       setIsRequestingPermission(false);
@@ -120,34 +150,24 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const renderPermissionCard = () => {
-    if (permission === 'PERMANENTLY_DENIED') {
-      return (
-        <View style={styles.permissionCard}>
-          <Text style={styles.permissionTitle}>Konum izni gerekli</Text>
-          <Text style={styles.permissionText}>
-            Çevrendeki etkinlikleri gösterebilmek için ayarlardan konum iznini aç.
-          </Text>
-          <TouchableOpacity activeOpacity={1} onPress={openSystemSettings} style={styles.permissionButton}>
-            <Text style={styles.permissionButtonText}>Ayarlara git</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
     return (
       <View style={styles.permissionCard}>
-        <Text style={styles.permissionTitle}>Konum izni olmadan devam</Text>
+        <Text style={styles.permissionTitle}>Konum izni gerekli</Text>
         <Text style={styles.permissionText}>
-          Yakınınızdaki etkinlikleri görebilmeniz için konum bilginize ihtiyacımız var.
+          Yakınınızdaki etkinlikleri görebilmek için konum izninize ihtiyacımız var.
         </Text>
-        <TouchableOpacity activeOpacity={1} onPress={requestLocationPermission} style={styles.permissionButton}>
-          <Text style={styles.permissionButtonText}>İzin ver</Text>
+        <TouchableOpacity activeOpacity={1} onPress={openSystemSettings} style={styles.permissionButton}>
+          <Text style={styles.permissionButtonText}>Ayarlara Git</Text>
         </TouchableOpacity>
       </View>
     );
   };
 
-  const renderActivitySection = (title: string, items: typeof halisahaItems, showAll = true) => {
+  const renderActivitySection = (title: string, items: HomeEvent[], showAll = true) => {
+    if (!items.length) {
+      return null;
+    }
+
     return (
       <View style={styles.activitySection}>
         <View style={styles.sectionRow}>
@@ -161,17 +181,18 @@ export const DashboardScreen: React.FC = () => {
             style={styles.activityRow}
             onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
           >
-            <Image source={{uri: item.photos[0]}} style={styles.activityImage} />
+            <Image source={{uri: item.coverPhoto}} style={styles.activityImage} />
             <View style={styles.activityContent}>
               <Text style={styles.activityTitle} numberOfLines={1}>
                 {item.title}
               </Text>
               <View style={styles.posterRow}>
-                <Image source={{uri: item.poster.profileImageUrl}} style={styles.posterAvatar} />
-                <Text style={styles.posterName}>{item.poster.name}</Text>
+                <Image source={{uri: item.host?.avatar || undefined}} style={styles.posterAvatar} />
+                <Text style={styles.posterName}>{item.host?.name || 'Meetstick'}</Text>
               </View>
               <Text style={styles.activityMeta}>
-                {item.location} · {item.attendeeCount} kişi
+                {(item.location?.addressText || 'Konum bilgisi yok') +
+                  ` · ${typeof item.acceptedCount === 'number' ? item.acceptedCount : 0} kişi`}
               </Text>
             </View>
           </TouchableOpacity>
@@ -194,21 +215,27 @@ export const DashboardScreen: React.FC = () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={[styles.content, {paddingBottom: tabBarHeight + 16}]}
         >
+          {isLoadingHome ? (
+            <View style={{paddingTop: 36}}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : null}
+
           <View>
             <Text style={styles.sectionTitle}>Öne çıkan etkinlikler</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-              {featuredMeetings.map(item => (
+              {featuredEvents.map(item => (
                 <TouchableOpacity
                   key={`featured-${item.id}`}
                   activeOpacity={1}
                   style={styles.featuredCard}
                   onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
                 >
-                  <Image source={{uri: item.featuredImageUrl}} style={styles.featuredImage} />
+                  <Image source={{uri: item.coverPhoto}} style={styles.featuredImage} />
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={styles.cardDate}>{item.location}</Text>
+                  <Text style={styles.cardDate}>{item.location?.addressText || '-'}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -217,25 +244,24 @@ export const DashboardScreen: React.FC = () => {
           <View>
             <Text style={styles.sectionTitle}>Gelecek etkinlikler</Text>
             <View style={styles.upcomingRow}>
-              {upcomingMeetings.map(item => (
+              {upcomingEvents.map(item => (
                 <TouchableOpacity
                   key={`upcoming-${item.id}`}
                   activeOpacity={1}
                   style={styles.upcomingCard}
                   onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
                 >
-                  <Image source={{uri: item.featuredImageUrl}} style={styles.upcomingImage} />
+                  <Image source={{uri: item.coverPhoto}} style={styles.upcomingImage} />
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={styles.cardDate}>{item.location}</Text>
+                  <Text style={styles.cardDate}>{item.location?.addressText || '-'}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {renderActivitySection('Halısaha', halisahaItems)}
-          {renderActivitySection('Konser', concertItems)}
+          {groupedEvents.map(group => renderActivitySection(group.interest.name, group.events))}
         </ScrollView>
       )}
     </Screen>

@@ -42,10 +42,10 @@ export const updateLocationDistance = async ({
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl('/v1/user/location-distance'), {
+  const response = await fetch(buildApiUrl('/v1/auth/settings/nearby-events-radius'), {
     method: 'POST',
     headers,
-    body: JSON.stringify({locationDistance})
+    body: JSON.stringify({radiusKm: locationDistance})
   });
 
   if (!response.ok) {

@@ -1,10 +1,11 @@
 import {CountryCode} from 'libphonenumber-js';
+import {DeleteAccountReason} from '@/services/auth/authService';
 
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: {selectedCountry?: CountryCode} | undefined;
   CountryPicker: undefined;
-  Otp: {phoneNumber: string; displayPhoneNumber: string; otpEndTime: number};
+  Otp: {otpId: string; phoneNumber: string; displayPhoneNumber: string; otpEndTime: number};
   Welcome: {registrationToken: string};
   RegisterInfo: undefined;
   RegisterDescription: undefined;
@@ -18,6 +19,15 @@ export type RootStackParamList = {
   Agreements: undefined;
   ContactUs: undefined;
   DeleteAccount: undefined;
+  ChatRoom: {eventId: string; title: string};
+  ChatEventInfo: {eventId: string; title: string; fromChat?: boolean};
+  DeleteAccountOtp: {
+    otpId: string;
+    phoneNumber: string;
+    otpEndTime: number;
+    reason: DeleteAccountReason;
+    reasonNote?: string;
+  };
   WebView: {title: string; url?: string; htmlContent?: string};
   NewMeetingDetails: undefined;
   NewMeetingLocation: undefined;

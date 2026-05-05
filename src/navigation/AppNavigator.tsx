@@ -19,6 +19,9 @@ import {LocationSettingsScreen} from '@/screens/Profile/LocationSettingsScreen';
 import {AgreementsScreen} from '@/screens/Profile/AgreementsScreen';
 import {ContactUsScreen} from '@/screens/Profile/ContactUsScreen';
 import {DeleteAccountScreen} from '@/screens/Profile/DeleteAccountScreen';
+import {DeleteAccountOtpScreen} from '@/screens/Profile/DeleteAccountOtpScreen';
+import {ChatRoomScreen} from '@/screens/Messages/ChatRoomScreen';
+import {ChatEventInfoScreen} from '@/screens/Messages/ChatEventInfoScreen';
 import {WebViewScreen} from '@/screens/Web/WebViewScreen';
 import {NewMeetingDetailsScreen} from '@/screens/NewMeeting/NewMeetingDetailsScreen';
 import {NewMeetingLocationScreen} from '@/screens/NewMeeting/NewMeetingLocationScreen';
@@ -56,6 +59,9 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="Agreements" component={AgreementsScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+        <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+        <Stack.Screen name="ChatEventInfo" component={ChatEventInfoScreen} />
+        <Stack.Screen name="DeleteAccountOtp" component={DeleteAccountOtpScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
         <Stack.Screen name="NewMeetingDetails" component={NewMeetingDetailsScreen} />
         <Stack.Screen name="NewMeetingLocation" component={NewMeetingLocationScreen} />

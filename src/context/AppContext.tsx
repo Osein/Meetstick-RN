@@ -1,5 +1,5 @@
 import React, {createContext, useCallback, useContext, useMemo, useState} from 'react';
-import {NewMeetingDraft, RegisterDraft, User} from '@/types';
+import {LegalAgreement, NewMeetingDraft, RegisterDraft, User} from '@/types';
 import {VerifyOtpResponse} from '@/services/auth/authService';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
 import {mapVerifiedProfileToUser} from '@/services/auth/authMappers';
@@ -7,6 +7,7 @@ import {mapVerifiedProfileToUser} from '@/services/auth/authMappers';
 type AppState = {
   onboardingComplete: boolean;
   user?: User;
+  legalAgreements: LegalAgreement[];
   registerDraft: RegisterDraft;
   newMeetingDraft: NewMeetingDraft;
 };
@@ -35,19 +36,26 @@ const defaultMeetingDraft: NewMeetingDraft = {
   title: '',
   participantCount: '',
   description: '',
+  isFutureEvent: false,
   photos: []
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-export const AppProvider: React.FC<{children: React.ReactNode; initialUser?: User}> = ({
+export const AppProvider: React.FC<{
+  children: React.ReactNode;
+  initialUser?: User;
+  initialLegalAgreements?: LegalAgreement[];
+}> = ({
   children,
-  initialUser
+  initialUser,
+  initialLegalAgreements = []
 }) => {
   const secureStorage = useMemo(() => new MeetstickSecureKeyValueStorage(), []);
   const [state, setState] = useState<AppState>({
     onboardingComplete: Boolean(initialUser),
     user: initialUser,
+    legalAgreements: initialLegalAgreements,
     registerDraft: defaultRegisterDraft,
     newMeetingDraft: defaultMeetingDraft
   });

@@ -12,7 +12,7 @@ import {AppProvider} from '@/context/AppContext';
 import {SplashService} from '@/services/splash/splashService';
 import {OnboardingImageKey} from '@/config/AppConfigContainer';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
-import {User} from '@/types';
+import {LegalAgreement, User} from '@/types';
 import {mapVerifiedProfileToUser} from '@/services/auth/authMappers';
 
 const MEETSTICK_USER_ID_KEY = 'meetstick_user_id';
@@ -49,6 +49,7 @@ export default function App() {
   const [appReady, setAppReady] = useState(false);
   const [rootReady, setRootReady] = useState(false);
   const [initialUser, setInitialUser] = useState<User | undefined>(undefined);
+  const [initialLegalAgreements, setInitialLegalAgreements] = useState<LegalAgreement[]>([]);
 
   useEffect(() => {
     const splashService = new SplashService();
@@ -59,10 +60,22 @@ export default function App() {
       try {
         await ensureMeetstickUserId();
         const savedProfile = await secureKeyValueStorage.getUserProfile();
-        if (savedProfile) {
+        const startupPayload = await splashService.fetchStartupPayload({
+          onboardingKeys,
+          accessToken: savedProfile?.accessToken
+        });
+
+        setInitialLegalAgreements(startupPayload.legalAgreements);
+
+        if (startupPayload.userProfile) {
+          await secureKeyValueStorage.saveUserProfile(startupPayload.userProfile);
+          setInitialUser(mapVerifiedProfileToUser(startupPayload.userProfile));
+        } else if (savedProfile?.accessToken) {
+          await secureKeyValueStorage.clearUserProfile();
+          setInitialUser(undefined);
+        } else if (savedProfile) {
           setInitialUser(mapVerifiedProfileToUser(savedProfile));
         }
-        await splashService.fetchOnboardingImageUrls(onboardingKeys);
       } finally {
         setAppReady(true);
       }
@@ -86,7 +99,7 @@ export default function App() {
       {appReady ? (
         <SafeAreaProvider>
           <KeyboardProvider>
-            <AppProvider initialUser={initialUser}>
+            <AppProvider initialUser={initialUser} initialLegalAgreements={initialLegalAgreements}>
               <StatusBar style="dark" />
               <AppNavigator />
               <Toasts />

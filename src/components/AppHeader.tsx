@@ -7,9 +7,10 @@ type Props = {
   title: string;
   onBack?: () => void;
   rightElement?: React.ReactNode;
+  onTitlePress?: () => void;
 };
 
-export const AppHeader: React.FC<Props> = ({title, onBack, rightElement}) => {
+export const AppHeader: React.FC<Props> = ({title, onBack, rightElement, onTitlePress}) => {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
@@ -19,7 +20,16 @@ export const AppHeader: React.FC<Props> = ({title, onBack, rightElement}) => {
           </TouchableOpacity>
         ) : null}
       </View>
-      <Text style={styles.title}>{title}</Text>
+      {onTitlePress ? (
+        <TouchableOpacity onPress={onTitlePress} style={styles.titleButton} activeOpacity={0.8}>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={palette.textSecondary} />
+        </TouchableOpacity>
+      ) : (
+        <Text style={styles.title}>{title}</Text>
+      )}
       <View style={styles.right}>{rightElement}</View>
     </View>
   );
@@ -37,8 +47,15 @@ const styles = StyleSheet.create({
   },
   left: {width: 42, justifyContent: 'center'},
   right: {width: 42, alignItems: 'flex-end'},
-  title: {
+  titleButton: {
     flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2
+  },
+  title: {
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',

@@ -3,7 +3,7 @@ import {User} from '@/types';
 
 export const mapVerifiedProfileToUser = (profile: VerifyOtpResponse): User => {
   return {
-    id: profile.phoneNumber || profile.email || 'user',
+    id: profile.id || profile.phoneNumber || profile.email || 'user',
     name: profile.name || 'Meetstick User',
     email: profile.email,
     phoneNumber: profile.phoneNumber,

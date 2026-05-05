@@ -1,5 +1,5 @@
 export type Interest = {
-  id: number;
+  id: string | number;
   title: string;
 };
 
@@ -91,6 +91,15 @@ export type User = {
   isVerified?: boolean;
 };
 
+export type LegalAgreement = {
+  id: string;
+  key: string;
+  version: string;
+  title: string;
+  htmlContent: string;
+  required?: boolean;
+};
+
 export type RegisterDraft = {
   name: string;
   birthDate?: string;
@@ -104,7 +113,10 @@ export type NewMeetingDraft = {
   title: string;
   participantCount: string;
   description: string;
+  isFutureEvent: boolean;
+  eventDateTime?: string;
   locationAddress?: string;
+  locationPlaceId?: string;
   latitude?: number;
   longitude?: number;
   photos: string[];

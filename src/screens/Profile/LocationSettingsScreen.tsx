@@ -64,7 +64,7 @@ export const LocationSettingsScreen: React.FC = () => {
         </Text>
         <Slider
           value={distance}
-          minimumValue={5}
+          minimumValue={10}
           maximumValue={150}
           step={1}
           minimumTrackTintColor={palette.primary}

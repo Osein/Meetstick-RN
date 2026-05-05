@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Alert, Pressable, Text, View} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
 import {OtpInput, OtpInputRef} from 'react-native-otp-entry';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
@@ -10,18 +10,21 @@ import {PrimaryButton} from '@/components/Buttons';
 import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
-import {verifyLoginOtp} from '@/services/auth/authService';
-import {showErrorToast} from '@/services/ui/toastService';
+import {resendLoginOtp, verifyLoginOtp} from '@/services/auth/authService';
+import {showErrorToast, showSuccessToast} from '@/services/ui/toastService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Otp'>;
 
 export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
-  const {phoneNumber, displayPhoneNumber, otpEndTime} = route.params;
+  const {otpId, displayPhoneNumber, otpEndTime} = route.params;
   const {completeLoginWithVerifiedProfile} = useAppContext();
   const otpInputRef = useRef<OtpInputRef>(null);
+  const [currentOtpId, setCurrentOtpId] = useState(otpId);
+  const [currentDisplayPhoneNumber, setCurrentDisplayPhoneNumber] = useState(displayPhoneNumber);
   const [otp, setOtp] = useState('');
   const [otpInputKey, setOtpInputKey] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, Math.floor((otpEndTime - Date.now()) / 1000))
   );
@@ -44,9 +47,18 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
     try {
       setIsVerifying(true);
       const response = await verifyLoginOtp({
-        phoneNumber,
+        otpId: currentOtpId,
         otpCode: otp
       });
+
+      if (!response.userExists || !response.accessToken) {
+        const registrationToken = response.registrationToken;
+        if (!registrationToken) {
+          throw new Error('Kullanıcı oturumu oluşturulamadı.');
+        }
+        navigation.navigate('Welcome', {registrationToken});
+        return;
+      }
 
       await completeLoginWithVerifiedProfile(response);
       navigation.reset({
@@ -61,13 +73,32 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
     }
   };
 
-  const handleResend = () => {
-    Alert.alert('Gönderildi', 'Yeni kod telefonuna gönderildi (mock).');
-    otpInputRef.current?.clear();
-    otpInputRef.current?.setValue('');
-    setOtp('');
-    setOtpInputKey(prev => prev + 1);
-    setRemaining(120);
+  const handleResend = async () => {
+    if (remaining > 0 || isResending) {
+      return;
+    }
+
+    try {
+      setIsResending(true);
+      const response = await resendLoginOtp({otpId: currentOtpId});
+      const nextRemaining = Math.max(0, Math.floor((response.otpEndTime - Date.now()) / 1000));
+
+      setCurrentOtpId(response.otpId);
+      if (response.phoneNumber?.trim()) {
+        setCurrentDisplayPhoneNumber(response.phoneNumber.trim());
+      }
+      otpInputRef.current?.clear();
+      otpInputRef.current?.setValue('');
+      setOtp('');
+      setOtpInputKey(prev => prev + 1);
+      setRemaining(nextRemaining);
+      showSuccessToast('Yeni doğrulama kodu gönderildi.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kod tekrar gönderilemedi. Lütfen tekrar dene.';
+      showErrorToast(message);
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const formattedRemaining = useMemo(() => {
@@ -93,7 +124,7 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
               lineHeight: 24
             }}
           >
-            {displayPhoneNumber} numarasına 6 haneli kod gönderdik.
+            {currentDisplayPhoneNumber} numarasına 6 haneli kod gönderdik.
           </Text>
 
           <OtpInput
@@ -150,13 +181,13 @@ export const OtpScreen: React.FC<Props> = ({navigation, route}) => {
             </Text>
           )}
 
-          <Pressable onPress={handleResend} disabled={remaining > 0} style={{marginTop: 14}}>
+          <Pressable onPress={handleResend} disabled={remaining > 0 || isResending} style={{marginTop: 14}}>
             <Text
               style={{
                 textAlign: 'center',
                 fontSize: 18,
                 fontWeight: '600',
-                color: remaining > 0 ? palette.muted : '#FF6B6B'
+                color: remaining > 0 || isResending ? palette.muted : '#FF6B6B'
               }}
             >
               Tekrar Gönder

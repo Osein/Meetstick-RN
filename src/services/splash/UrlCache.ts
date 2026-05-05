@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
 const cacheDirectory = FileSystem.cacheDirectory ? `${FileSystem.cacheDirectory}onboarding-images/` : null;

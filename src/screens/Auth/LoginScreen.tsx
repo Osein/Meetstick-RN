@@ -14,6 +14,7 @@ import {palette} from '@/theme/colors';
 import {COUNTRIES, getCountryByCode} from '@/utils/countries';
 import {loginWithPhoneNumber} from '@/services/auth/authService';
 import {showErrorToast} from '@/services/ui/toastService';
+import {useAppContext} from '@/context/AppContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -32,6 +33,7 @@ const getInitialCountry = () => {
 };
 
 export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
+  const {state} = useAppContext();
   const [selectedCountry, setSelectedCountry] = useState(getInitialCountry);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -63,6 +65,23 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const displayPhoneNumber = parsedPhoneNumber?.formatInternational();
   const isValid = Boolean(parsedPhoneNumber?.isValid());
   const requestPhoneNumber = fullPhoneNumber?.replace(/\s+/g, '').trim() ?? '';
+
+  const termsAgreement = useMemo(
+    () =>
+      state.legalAgreements.find(
+        agreement =>
+          agreement.key.toUpperCase().includes('TERM') || agreement.title.toLowerCase().includes('kullanim')
+      ),
+    [state.legalAgreements]
+  );
+  const privacyAgreement = useMemo(
+    () =>
+      state.legalAgreements.find(
+        agreement =>
+          agreement.key.toUpperCase().includes('PRIVACY') || agreement.title.toLowerCase().includes('gizlilik')
+      ),
+    [state.legalAgreements]
+  );
 
   const handlePhoneChange = (text: string) => {
     const parsed = parseIncompletePhoneNumber(text);
@@ -97,9 +116,11 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
     try {
       setIsSubmitting(true);
       const response = await loginWithPhoneNumber({phoneNumber: requestPhoneNumber});
+      const serverDisplayPhoneNumber = response.phoneNumber?.trim() || displayPhoneNumber;
       navigation.navigate('Otp', {
+        otpId: response.otpId,
         phoneNumber: fullPhoneNumber,
-        displayPhoneNumber,
+        displayPhoneNumber: serverDisplayPhoneNumber,
         otpEndTime: response.otpEndTime
       });
     } catch (error) {
@@ -166,15 +187,29 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
           <Text style={{color: palette.textSecondary, marginTop: 12}}>
             Devam ederek Meetstick{' '}
             <Text
-              style={{textDecorationLine: 'underline'}}
-              onPress={() => navigation.navigate('WebView', {title: 'Kullanım Koşulları', url: 'https://google.com'})}
+              style={termsAgreement ? {textDecorationLine: 'underline'} : undefined}
+              onPress={() =>
+                termsAgreement
+                  ? navigation.navigate('WebView', {
+                      title: termsAgreement.title,
+                      htmlContent: termsAgreement.htmlContent
+                    })
+                  : undefined
+              }
             >
               kullanım koşullarını
             </Text>{' '}
             ve{' '}
             <Text
-              style={{textDecorationLine: 'underline'}}
-              onPress={() => navigation.navigate('WebView', {title: 'Gizlilik Politikası', url: 'https://google.com'})}
+              style={privacyAgreement ? {textDecorationLine: 'underline'} : undefined}
+              onPress={() =>
+                privacyAgreement
+                  ? navigation.navigate('WebView', {
+                      title: privacyAgreement.title,
+                      htmlContent: privacyAgreement.htmlContent
+                    })
+                  : undefined
+              }
             >
               gizlilik politikasını
             </Text>{' '}
