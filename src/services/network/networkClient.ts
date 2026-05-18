@@ -1,5 +1,6 @@
 import axios, {AxiosError} from 'axios';
 import {API_BASE_URL} from '@/services/api/apiConfig';
+import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
 
 type ServiceErrorResponse = {
   messageId?: string;
@@ -16,7 +17,42 @@ export const networkClient = axios.create({
   }
 });
 
-networkClient.interceptors.request.use(config => {
+const secureStorage = new MeetstickSecureKeyValueStorage();
+let cachedAccessToken: string | undefined;
+let lastAccessTokenReadAt = 0;
+
+const getLocalAccessToken = async (): Promise<string | undefined> => {
+  const now = Date.now();
+  if (cachedAccessToken && now - lastAccessTokenReadAt < 30_000) {
+    return cachedAccessToken;
+  }
+
+  const profile = await secureStorage.getUserProfile();
+  const token = profile?.accessToken?.trim();
+  cachedAccessToken = token && token.length > 0 ? token : undefined;
+  lastAccessTokenReadAt = now;
+  return cachedAccessToken;
+};
+
+networkClient.interceptors.request.use(async config => {
+  const headersAny = config.headers as
+    | {Authorization?: string; authorization?: string; set?: (name: string, value: string) => void}
+    | undefined;
+  const hasAuthorization = Boolean(headersAny?.Authorization || headersAny?.authorization);
+
+  if (!hasAuthorization) {
+    const token = await getLocalAccessToken();
+    if (token) {
+      if (headersAny?.set) {
+        headersAny.set('Authorization', `Bearer ${token}`);
+      } else {
+        const fallbackHeaders = (config.headers || {}) as Record<string, string>;
+        fallbackHeaders.Authorization = `Bearer ${token}`;
+        config.headers = fallbackHeaders as typeof config.headers;
+      }
+    }
+  }
+
   console.log('[network][request]', {
     method: config.method,
     url: `${config.baseURL || ''}${config.url || ''}`,

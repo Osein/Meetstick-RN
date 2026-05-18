@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import forge from 'node-forge';
-import {VerifyOtpResponse} from '@/services/auth/authService';
+import type {VerifyOtpResponse} from '@/services/auth/authService';
 
 const STORAGE_KEY = 'meetstick_user_profile_encrypted';
 const RSA_PUBLIC_KEY_STORAGE_KEY = 'meetstick_user_rsa_public_key';
