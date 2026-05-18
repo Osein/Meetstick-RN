@@ -1,33 +1,23 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {Alert, Dimensions, FlatList, Image, Text, View} from 'react-native';
-import {SvgUri} from 'react-native-svg';
+import React, {useMemo, useRef, useState} from 'react';
+import {Dimensions, FlatList, Text, View} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {palette} from '@/theme/colors';
-import {PrimaryButton, OutlinedButton} from '@/components/Buttons';
+import {PrimaryButton} from '@/components/Buttons';
 import {useAppContext} from '@/context/AppContext';
-import {AppConfigContainer, OnboardingImageKey} from '@/config/AppConfigContainer';
-import {SplashService} from '@/services/splash/splashService';
+import {OnboardingImageKey} from '@/config/AppConfigContainer';
+import OnboardingAsset1 from '../../../assets/onboarding_asset_1.svg';
+import OnboardingAsset2 from '../../../assets/onboarding_asset_2.svg';
+import OnboardingAsset3 from '../../../assets/onboarding_asset_3.svg';
 
 const {width} = Dimensions.get('window');
 
 type OnboardingNav = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
-const splashService = new SplashService();
-const fallbackImageUrl = AppConfigContainer.getInstance().getFallbackImageUrl();
 const imageWidth = width - 48;
 const imageHeight = width * 0.9;
-
-const isSvgUrl = (url: string): boolean => {
-  if (url.startsWith('data:image/svg+xml')) {
-    return true;
-  }
-
-  const sanitized = url.split('?')[0];
-  return sanitized.toLowerCase().endsWith('.svg');
-};
 
 const pages: {title: string; imageKey: OnboardingImageKey}[] = [
   {
@@ -48,29 +38,9 @@ export const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<OnboardingNav>();
   const {completeOnboarding} = useAppContext();
   const [index, setIndex] = useState(0);
-  const [imageUrls, setImageUrls] = useState<string[]>(() => pages.map(() => fallbackImageUrl));
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    let isActive = true;
-
-    splashService
-      .fetchOnboardingImageUrls(pages.map(page => page.imageKey))
-      .then(urls => {
-        if (isActive) {
-          setImageUrls(urls);
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setImageUrls(pages.map(() => fallbackImageUrl));
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
+  const localAssets = useMemo(() => [OnboardingAsset1, OnboardingAsset2, OnboardingAsset3], []);
 
   const dots = useMemo(
     () =>
@@ -108,28 +78,29 @@ export const OnboardingScreen: React.FC = () => {
           setIndex(newIndex);
         }}
         renderItem={({item, index: pageIndex}) => (
-          <View style={{width, padding: 24, alignItems: 'center'}}>
+          <View style={{width, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 8, alignItems: 'center'}}>
             <Text style={{fontSize: 24, fontWeight: '700', color: palette.textPrimary, textAlign: 'center'}}>
               {item.title}
             </Text>
-            <View
-              style={{
-                width: imageWidth,
-                height: imageHeight,
-                marginTop: 32,
-                borderRadius: 24,
-                overflow: 'hidden'
-              }}
-            >
-              {isSvgUrl(imageUrls[pageIndex] || fallbackImageUrl) ? (
-                <SvgUri width={imageWidth} height={imageHeight} uri={imageUrls[pageIndex] || fallbackImageUrl} />
-              ) : (
-                <Image
-                  source={{uri: imageUrls[pageIndex] || fallbackImageUrl}}
-                  style={{width: '100%', height: '100%'}}
-                  resizeMode="cover"
-                />
-              )}
+            <View style={{flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center'}}>
+              <View
+                style={{
+                  width: imageWidth,
+                  height: imageHeight,
+                  borderRadius: 24,
+                  overflow: 'hidden',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {(() => {
+                  const AssetComponent = localAssets[pageIndex];
+                  if (!AssetComponent) {
+                    return null;
+                  }
+                  return <AssetComponent width={imageWidth} height={imageHeight} />;
+                })()}
+              </View>
             </View>
           </View>
         )}
