@@ -1,4 +1,4 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 export type AgreementListItem = {
   id: string;
@@ -9,31 +9,6 @@ export type AgreementListItem = {
 export type AgreementDetail = {
   title: string;
   htmlContent: string;
-};
-
-type ServiceErrorResponse = {
-  messageId?: string;
-  userDescription?: string;
-  subErrors?: unknown;
-  message?: string;
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'Sözleşmeler alınamadı.';
 };
 
 const normalizeAgreement = (item: unknown): AgreementListItem | null => {
@@ -78,26 +53,21 @@ export const getAgreements = async (accessToken?: string): Promise<AgreementList
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl('/v1/agreements'), {
-    method: 'GET',
-    headers
-  });
+  try {
+    const response = await networkClient.get('/v1/agreements', {headers});
+    const payload = response.data as unknown;
+    const rawList = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === 'object' && Array.isArray((payload as {agreements?: unknown[]}).agreements)
+        ? (payload as {agreements: unknown[]}).agreements
+      : payload && typeof payload === 'object' && Array.isArray((payload as {data?: unknown[]}).data)
+        ? (payload as {data: unknown[]}).data
+        : [];
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+    return rawList.map(normalizeAgreement).filter((item): item is AgreementListItem => item !== null);
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Sözleşmeler alınamadı.'));
   }
-
-  const payload = (await response.json()) as unknown;
-  const rawList = Array.isArray(payload)
-    ? payload
-    : payload && typeof payload === 'object' && Array.isArray((payload as {agreements?: unknown[]}).agreements)
-      ? (payload as {agreements: unknown[]}).agreements
-    : payload && typeof payload === 'object' && Array.isArray((payload as {data?: unknown[]}).data)
-      ? (payload as {data: unknown[]}).data
-      : [];
-
-  return rawList.map(normalizeAgreement).filter((item): item is AgreementListItem => item !== null);
 };
 
 export const getAgreementDetail = async (
@@ -113,33 +83,35 @@ export const getAgreementDetail = async (
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl(`/v1/agreements/${encodeURIComponent(id)}/${encodeURIComponent(version)}`), {
-    method: 'GET',
-    headers
-  });
+  try {
+    const response = await networkClient.get(
+      `/v1/agreements/${encodeURIComponent(id)}/${encodeURIComponent(version)}`,
+      {headers}
+    );
+    const payload = response.data as unknown;
+    const data =
+      payload && typeof payload === 'object' && 'data' in payload
+        ? ((payload as {data?: unknown}).data ?? payload)
+        : payload;
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
+    if (!data || typeof data !== 'object') {
+      throw new Error('Sözleşme detayı alınamadı.');
+    }
+
+    const detail = data as Partial<AgreementDetail>;
+    if (typeof detail.title !== 'string' || typeof detail.htmlContent !== 'string') {
+      throw new Error('Sözleşme detayı alınamadı.');
+    }
+
+    return {
+      title: detail.title,
+      htmlContent: detail.htmlContent
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message === 'Sözleşme detayı alınamadı.'
+        ? error.message
+        : getServiceErrorMessage(error, 'Sözleşme detayı alınamadı.');
     throw new Error(message);
   }
-
-  const payload = (await response.json()) as unknown;
-  const data =
-    payload && typeof payload === 'object' && 'data' in payload
-      ? ((payload as {data?: unknown}).data ?? payload)
-      : payload;
-
-  if (!data || typeof data !== 'object') {
-    throw new Error('Sözleşme detayı alınamadı.');
-  }
-
-  const detail = data as Partial<AgreementDetail>;
-  if (typeof detail.title !== 'string' || typeof detail.htmlContent !== 'string') {
-    throw new Error('Sözleşme detayı alınamadı.');
-  }
-
-  return {
-    title: detail.title,
-    htmlContent: detail.htmlContent
-  };
 };

@@ -1,30 +1,5 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
 import {Interest} from '@/types';
-
-type ServiceErrorResponse = {
-  messageId?: string;
-  userDescription?: string;
-  subErrors?: unknown;
-  message?: string;
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'İlgi alanları alınamadı.';
-};
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 const normalizeInterest = (item: unknown): Interest | null => {
   if (!item || typeof item !== 'object') {
@@ -61,26 +36,19 @@ const normalizeInterest = (item: unknown): Interest | null => {
 };
 
 export const getInterests = async (): Promise<Interest[]> => {
-  const response = await fetch(buildApiUrl('/v1/interests'), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+  try {
+    const response = await networkClient.get('/v1/interests');
+    const payload = response.data as unknown;
+    const rawList = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === 'object' && Array.isArray((payload as {interests?: unknown[]}).interests)
+        ? (payload as {interests: unknown[]}).interests
+        : payload && typeof payload === 'object' && Array.isArray((payload as {data?: unknown[]}).data)
+          ? (payload as {data: unknown[]}).data
+          : [];
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+    return rawList.map(normalizeInterest).filter((item): item is Interest => item !== null);
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'İlgi alanları alınamadı.'));
   }
-
-  const payload = (await response.json()) as unknown;
-  const rawList = Array.isArray(payload)
-    ? payload
-    : payload && typeof payload === 'object' && Array.isArray((payload as {interests?: unknown[]}).interests)
-      ? (payload as {interests: unknown[]}).interests
-      : payload && typeof payload === 'object' && Array.isArray((payload as {data?: unknown[]}).data)
-        ? (payload as {data: unknown[]}).data
-        : [];
-
-  return rawList.map(normalizeInterest).filter((item): item is Interest => item !== null);
 };

@@ -1,33 +1,8 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 type UpdateLocationDistancePayload = {
   locationDistance: number;
   accessToken?: string;
-};
-
-type ServiceErrorResponse = {
-  messageId?: string;
-  userDescription?: string;
-  subErrors?: unknown;
-  message?: string;
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'İstek başarısız oldu.';
 };
 
 export const updateLocationDistance = async ({
@@ -42,14 +17,13 @@ export const updateLocationDistance = async ({
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl('/v1/auth/settings/nearby-events-radius'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({radiusKm: locationDistance})
-  });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+  try {
+    await networkClient.post(
+      '/v1/auth/settings/nearby-events-radius',
+      {radiusKm: locationDistance},
+      {headers}
+    );
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error));
   }
 };

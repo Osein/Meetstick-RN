@@ -1,6 +1,6 @@
 import {AppConfigContainer, OnboardingImageKey} from '@/config/AppConfigContainer';
-import {buildApiUrl} from '@/services/api/apiConfig';
 import {VerifyOtpResponse} from '@/services/auth/authService';
+import {networkClient} from '@/services/network/networkClient';
 import {UrlCache} from '@/services/splash/UrlCache';
 import {Gender, LegalAgreement} from '@/types';
 
@@ -156,13 +156,10 @@ export class SplashService {
       return SplashService.pendingOnboardingImages;
     }
 
-    const request = fetch(buildApiUrl('/v1/home/splash-config'))
-      .then(async response => {
-        if (!response.ok) {
-          return null;
-        }
-
-        const data = (await response.json()) as SplashConfigResponse;
+    const request = networkClient
+      .get('/v1/home/splash-config')
+      .then(response => {
+        const data = response.data as SplashConfigResponse;
         return normalizeOnboardingImages(data.onboardingImages);
       })
       .catch(() => null)
@@ -207,15 +204,10 @@ export class SplashService {
     }
 
     try {
-      const response = await fetch(buildApiUrl(`/v1/agreements/${encodeURIComponent(id)}/html-content`), {
-        method: 'GET',
+      const response = await networkClient.get(`/v1/agreements/${encodeURIComponent(id)}/html-content`, {
         headers
       });
-      if (!response.ok) {
-        return null;
-      }
-
-      const payload = (await response.json()) as {content?: unknown};
+      const payload = response.data as {content?: unknown};
       if (typeof payload.content === 'string' && payload.content.trim().length > 0) {
         return payload.content;
       }
@@ -242,13 +234,8 @@ export class SplashService {
 
     let splashPayload: SplashConfigResponse = {};
     try {
-      const response = await fetch(buildApiUrl('/v1/auth/splash'), {
-        method: 'GET',
-        headers
-      });
-      if (response.ok) {
-        splashPayload = (await response.json()) as SplashConfigResponse;
-      }
+      const response = await networkClient.get('/v1/auth/splash', {headers});
+      splashPayload = response.data as SplashConfigResponse;
     } catch {
       splashPayload = {};
     }

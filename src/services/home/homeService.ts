@@ -1,11 +1,4 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
-
-type ServiceErrorResponse = {
-  messageId?: string;
-  userDescription?: string;
-  subErrors?: unknown;
-  message?: string;
-};
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 type HomeHost = {
   id?: string;
@@ -42,24 +35,6 @@ export type HomeFeed = {
   featuredEvents: HomeEvent[];
   upcomingEvents: HomeEvent[];
   groupedEvents: HomeInterestGroup[];
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'Anasayfa verileri alınamadı.';
 };
 
 const normalizeEvent = (item: unknown): HomeEvent | null => {
@@ -168,29 +143,28 @@ export const getHomeFeed = async ({
     lng: String(lng)
   });
 
-  const response = await fetch(buildApiUrl(`/v1/home?${params.toString()}`), {
-    method: 'GET',
-    headers
-  });
+  try {
+    const response = await networkClient.get('/v1/home', {
+      headers,
+      params: {lat: String(lat), lng: String(lng)}
+    });
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+    const payload = response.data as {
+      featuredEvents?: unknown;
+      upcomingEvents?: unknown;
+      groupedEvents?: unknown;
+    };
+
+    return {
+      featuredEvents: Array.isArray(payload.featuredEvents)
+        ? payload.featuredEvents.map(normalizeEvent).filter((event): event is HomeEvent => event !== null)
+        : [],
+      upcomingEvents: Array.isArray(payload.upcomingEvents)
+        ? payload.upcomingEvents.map(normalizeEvent).filter((event): event is HomeEvent => event !== null)
+        : [],
+      groupedEvents: normalizeGroups(payload.groupedEvents)
+    };
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Anasayfa verileri alınamadı.'));
   }
-
-  const payload = (await response.json()) as {
-    featuredEvents?: unknown;
-    upcomingEvents?: unknown;
-    groupedEvents?: unknown;
-  };
-
-  return {
-    featuredEvents: Array.isArray(payload.featuredEvents)
-      ? payload.featuredEvents.map(normalizeEvent).filter((event): event is HomeEvent => event !== null)
-      : [],
-    upcomingEvents: Array.isArray(payload.upcomingEvents)
-      ? payload.upcomingEvents.map(normalizeEvent).filter((event): event is HomeEvent => event !== null)
-      : [],
-    groupedEvents: normalizeGroups(payload.groupedEvents)
-  };
 };

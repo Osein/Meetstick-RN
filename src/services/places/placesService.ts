@@ -1,9 +1,4 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
-
-type ServiceErrorResponse = {
-  userDescription?: string;
-  message?: string;
-};
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 export type PlaceSearchItem = {
   id: string;
@@ -11,24 +6,6 @@ export type PlaceSearchItem = {
   fullAddress: string;
   latitude: number;
   longitude: number;
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'Konum araması yapılamadı.';
 };
 
 const normalizePlace = (value: unknown): PlaceSearchItem | null => {
@@ -114,25 +91,23 @@ export const searchPlaces = async ({
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const params = new URLSearchParams({query: query.trim()});
-  const response = await fetch(buildApiUrl(`/v1/places/search?${params.toString()}`), {
-    method: 'GET',
-    headers
-  });
+  try {
+    const response = await networkClient.get('/v1/places/search', {
+      headers,
+      params: {query: query.trim()}
+    });
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+    const data = response.data as {items?: unknown; data?: unknown} | unknown[];
+    const rawItems = Array.isArray(data)
+      ? data
+      : Array.isArray((data as {items?: unknown})?.items)
+        ? ((data as {items: unknown[]}).items ?? [])
+        : Array.isArray((data as {data?: unknown})?.data)
+          ? ((data as {data: unknown[]}).data ?? [])
+          : [];
+
+    return rawItems.map(normalizePlace).filter((item): item is PlaceSearchItem => item !== null);
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Konum araması yapılamadı.'));
   }
-
-  const data = (await response.json()) as {items?: unknown; data?: unknown} | unknown[];
-  const rawItems = Array.isArray(data)
-    ? data
-    : Array.isArray((data as {items?: unknown})?.items)
-      ? ((data as {items: unknown[]}).items ?? [])
-      : Array.isArray((data as {data?: unknown})?.data)
-        ? ((data as {data: unknown[]}).data ?? [])
-        : [];
-
-  return rawItems.map(normalizePlace).filter((item): item is PlaceSearchItem => item !== null);
 };

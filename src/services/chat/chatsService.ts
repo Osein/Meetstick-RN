@@ -1,5 +1,5 @@
-import {buildApiUrl} from '@/services/api/apiConfig';
 import * as FileSystem from 'expo-file-system/legacy';
+import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 
 type ServiceErrorResponse = {
   messageId?: string;
@@ -58,24 +58,6 @@ export type UploadChatMediaResponse = {
   height?: number;
 };
 
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const data = (await response.json()) as ServiceErrorResponse;
-
-    if (typeof data.userDescription === 'string' && data.userDescription.trim().length > 0) {
-      return data.userDescription;
-    }
-
-    if (typeof data.message === 'string' && data.message.trim().length > 0) {
-      return data.message;
-    }
-  } catch {
-    // noop
-  }
-
-  return 'Sohbet listesi alınamadı.';
-};
-
 const normalizeChatItem = (item: ChatListApiItem): ChatListItem | null => {
   const eventId =
     typeof item.eventId === 'string' ? item.eventId : item.eventId != null ? String(item.eventId) : '';
@@ -105,24 +87,19 @@ export const getChatList = async (accessToken?: string): Promise<ChatListItem[]>
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl('/v1/chats'), {
-    method: 'GET',
-    headers
-  });
+  try {
+    const response = await networkClient.get('/v1/chats', {headers});
+    const payload = response.data as unknown;
+    if (!Array.isArray(payload)) {
+      return [];
+    }
 
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+    return payload
+      .map(item => normalizeChatItem(item as ChatListApiItem))
+      .filter((item): item is ChatListItem => item !== null);
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Sohbet listesi alınamadı.'));
   }
-
-  const payload = (await response.json()) as unknown;
-  if (!Array.isArray(payload)) {
-    return [];
-  }
-
-  return payload
-    .map(item => normalizeChatItem(item as ChatListApiItem))
-    .filter((item): item is ChatListItem => item !== null);
 };
 
 export const getChatMessages = async ({
@@ -152,21 +129,12 @@ export const getChatMessages = async ({
     params.set('limit', String(limit));
   }
 
-  const query = params.toString();
-  const response = await fetch(
-    buildApiUrl(`/v1/chats/${encodeURIComponent(eventId)}/messages${query ? `?${query}` : ''}`),
-    {
-      method: 'GET',
-      headers
-    }
-  );
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
-  }
-
-  const payload = (await response.json()) as {
+  try {
+    const response = await networkClient.get(`/v1/chats/${encodeURIComponent(eventId)}/messages`, {
+      headers,
+      params
+    });
+    const payload = response.data as {
     items?: Array<{
       id?: unknown;
       type?: unknown;
@@ -179,33 +147,36 @@ export const getChatMessages = async ({
     nextCursor?: unknown;
   };
 
-  const items: ChatMessageItem[] = Array.isArray(payload.items)
-    ? payload.items
-        .map((item): ChatMessageItem | null => {
-          const id = typeof item.id === 'string' ? item.id : item.id != null ? String(item.id) : '';
-          const type = typeof item.type === 'string' ? item.type : item.type != null ? String(item.type) : '';
-          if (!id || !type) {
-            return null;
-          }
+    const items: ChatMessageItem[] = Array.isArray(payload.items)
+      ? payload.items
+          .map((item): ChatMessageItem | null => {
+            const id = typeof item.id === 'string' ? item.id : item.id != null ? String(item.id) : '';
+            const type = typeof item.type === 'string' ? item.type : item.type != null ? String(item.type) : '';
+            if (!id || !type) {
+              return null;
+            }
 
-          return {
-            id,
-            type,
-            text: typeof item.text === 'string' ? item.text : undefined,
-            photoUrl: typeof item.photoUrl === 'string' ? item.photoUrl : undefined,
-            sentAt: typeof item.sentAt === 'string' ? item.sentAt : undefined,
-            receivedAt: typeof item.receivedAt === 'string' ? item.receivedAt : undefined,
-            senderName: typeof item.sender?.name === 'string' ? item.sender.name : undefined,
-            senderId: typeof item.sender?.id === 'string' ? item.sender.id : undefined
-          };
-        })
-        .filter((item): item is ChatMessageItem => item !== null)
-    : [];
+            return {
+              id,
+              type,
+              text: typeof item.text === 'string' ? item.text : undefined,
+              photoUrl: typeof item.photoUrl === 'string' ? item.photoUrl : undefined,
+              sentAt: typeof item.sentAt === 'string' ? item.sentAt : undefined,
+              receivedAt: typeof item.receivedAt === 'string' ? item.receivedAt : undefined,
+              senderName: typeof item.sender?.name === 'string' ? item.sender.name : undefined,
+              senderId: typeof item.sender?.id === 'string' ? item.sender.id : undefined
+            };
+          })
+          .filter((item): item is ChatMessageItem => item !== null)
+      : [];
 
-  return {
-    items,
-    nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : undefined
-  };
+    return {
+      items,
+      nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : undefined
+    };
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Sohbet mesajları alınamadı.'));
+  }
 };
 
 export const uploadChatMedia = async ({
@@ -222,7 +193,7 @@ export const uploadChatMedia = async ({
   }
 
   const uploadTask = FileSystem.createUploadTask(
-    buildApiUrl(`/v1/chats/${encodeURIComponent(eventId)}/media`),
+    `${networkClient.defaults.baseURL || ''}/v1/chats/${encodeURIComponent(eventId)}/media`,
     fileUri,
     {
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
@@ -301,23 +272,18 @@ export const sendChatMessage = async ({
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl(`/v1/chats/${encodeURIComponent(eventId)}/messages`), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      type,
-      sentAt: sentAt ?? new Date().toISOString(),
-      text,
-      photoUrl
-    })
-  });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
-  }
-
-  const item = (await response.json()) as {
+  try {
+    const response = await networkClient.post(
+      `/v1/chats/${encodeURIComponent(eventId)}/messages`,
+      {
+        type,
+        sentAt: sentAt ?? new Date().toISOString(),
+        text,
+        photoUrl
+      },
+      {headers}
+    );
+    const item = response.data as {
     id?: unknown;
     type?: unknown;
     text?: unknown;
@@ -327,23 +293,30 @@ export const sendChatMessage = async ({
     sender?: {id?: unknown; name?: unknown} | null;
   };
 
-  const id = typeof item.id === 'string' ? item.id : item.id != null ? String(item.id) : '';
-  const normalizedType =
-    typeof item.type === 'string' ? item.type : item.type != null ? String(item.type) : '';
-  if (!id || !normalizedType) {
-    throw new Error('Mesaj yanıtı geçersiz.');
-  }
+    const id = typeof item.id === 'string' ? item.id : item.id != null ? String(item.id) : '';
+    const normalizedType =
+      typeof item.type === 'string' ? item.type : item.type != null ? String(item.type) : '';
+    if (!id || !normalizedType) {
+      throw new Error('Mesaj yanıtı geçersiz.');
+    }
 
-  return {
-    id,
-    type: normalizedType,
-    text: typeof item.text === 'string' ? item.text : undefined,
-    photoUrl: typeof item.photoUrl === 'string' ? item.photoUrl : undefined,
-    sentAt: typeof item.sentAt === 'string' ? item.sentAt : undefined,
-    receivedAt: typeof item.receivedAt === 'string' ? item.receivedAt : undefined,
-    senderName: typeof item.sender?.name === 'string' ? item.sender.name : undefined,
-    senderId: typeof item.sender?.id === 'string' ? item.sender.id : undefined
-  };
+    return {
+      id,
+      type: normalizedType,
+      text: typeof item.text === 'string' ? item.text : undefined,
+      photoUrl: typeof item.photoUrl === 'string' ? item.photoUrl : undefined,
+      sentAt: typeof item.sentAt === 'string' ? item.sentAt : undefined,
+      receivedAt: typeof item.receivedAt === 'string' ? item.receivedAt : undefined,
+      senderName: typeof item.sender?.name === 'string' ? item.sender.name : undefined,
+      senderId: typeof item.sender?.id === 'string' ? item.sender.id : undefined
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message === 'Mesaj yanıtı geçersiz.'
+        ? error.message
+        : getServiceErrorMessage(error, 'Mesaj gönderilemedi.');
+    throw new Error(message);
+  }
 };
 
 export const markChatMessagesSeen = async ({
@@ -363,19 +336,15 @@ export const markChatMessagesSeen = async ({
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(buildApiUrl(`/v1/chats/${encodeURIComponent(eventId)}/messages/seen`), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      cursorMessageId
-    })
-  });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw new Error(message);
+  try {
+    const response = await networkClient.post(
+      `/v1/chats/${encodeURIComponent(eventId)}/messages/seen`,
+      {cursorMessageId},
+      {headers}
+    );
+    const payload = response.data as {updated?: unknown};
+    return typeof payload.updated === 'number' ? payload.updated : 0;
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Mesaj okundu durumu güncellenemedi.'));
   }
-
-  const payload = (await response.json()) as {updated?: unknown};
-  return typeof payload.updated === 'number' ? payload.updated : 0;
 };
