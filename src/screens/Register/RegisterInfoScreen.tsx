@@ -1,7 +1,18 @@
 import React, {useMemo, useState} from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
-import {Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {
+  Animated,
+  Easing,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import DateTimePicker, {
   DateTimePickerAndroid,
@@ -114,6 +125,9 @@ export const RegisterInfoScreen: React.FC = () => {
   const [showIosDatePicker, setShowIosDatePicker] = useState(false);
   const [iosPickerDate, setIosPickerDate] = useState(initialDate);
   const [gender, setGender] = useState(state.registerDraft.gender);
+  const [isClosingDatePicker, setIsClosingDatePicker] = useState(false);
+  const backdropOpacity = useState(() => new Animated.Value(0))[0];
+  const sheetTranslateY = useState(() => new Animated.Value(340))[0];
 
   const canContinue = useMemo(() => name.trim().length > 2 && birthDate.trim().length > 3, [name, birthDate]);
 
@@ -148,11 +162,47 @@ export const RegisterInfoScreen: React.FC = () => {
     }
 
     setIosPickerDate(birthDateValue);
+    backdropOpacity.setValue(0);
+    sheetTranslateY.setValue(340);
     setShowIosDatePicker(true);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]).start();
   };
 
   const closeIosDatePicker = () => {
-    setShowIosDatePicker(false);
+    if (isClosingDatePicker) {
+      return;
+    }
+    setIsClosingDatePicker(true);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 150,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 340,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      setShowIosDatePicker(false);
+      setIsClosingDatePicker(false);
+    });
   };
 
   const confirmIosDatePicker = () => {
@@ -179,7 +229,7 @@ export const RegisterInfoScreen: React.FC = () => {
             <Text style={{fontWeight: '600', color: palette.textPrimary}}>Doğum Tarihi</Text>
             <TouchableOpacity onPress={openDatePicker} style={[inputStyle, {justifyContent: 'center'}]}>
               <Text style={{color: birthDate ? palette.textPrimary : palette.muted, fontSize: 16}}>
-                {birthDate || '-'}
+                {birthDate}
               </Text>
             </TouchableOpacity>
           </View>
@@ -219,21 +269,25 @@ export const RegisterInfoScreen: React.FC = () => {
         <Modal
           visible={showIosDatePicker}
           transparent
-          animationType="slide"
+          animationType="none"
           onRequestClose={closeIosDatePicker}
         >
           <View style={{flex: 1, justifyContent: 'flex-end'}}>
-            <Pressable
-              style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.28)'}}
-              onPress={closeIosDatePicker}
+            <Animated.View
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                backgroundColor: 'rgba(0,0,0,0.28)',
+                opacity: backdropOpacity
+              }}
             />
-            <View
+            <Pressable style={{flex: 1}} onPress={closeIosDatePicker} />
+            <Animated.View
               style={{
                 backgroundColor: '#fff',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                paddingTop: 12,
-                paddingBottom: 24
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 0,
+                paddingBottom: 24,
+                transform: [{translateY: sheetTranslateY}]
               }}
             >
               <View
@@ -245,10 +299,10 @@ export const RegisterInfoScreen: React.FC = () => {
               />
               <View
                 style={{
-                  marginTop: 10,
                   height: 40,
                   justifyContent: 'center',
-                  paddingHorizontal: 16
+                  paddingHorizontal: 16,
+                  marginTop: 12
                 }}
               >
                 <Text
@@ -290,18 +344,18 @@ export const RegisterInfoScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={{alignItems: 'center'}}>
-              <DateTimePicker
-                value={iosPickerDate}
-                mode="date"
-                display="spinner"
-                timeZoneName="UTC"
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
-                onChange={handleDateChange}
-              />
+              <View style={{alignItems: 'center', paddingTop: 8}}>
+                <DateTimePicker
+                  value={iosPickerDate}
+                  mode="date"
+                  display="spinner"
+                  timeZoneName="UTC"
+                  maximumDate={new Date()}
+                  minimumDate={new Date(1900, 0, 1)}
+                  onChange={handleDateChange}
+                />
               </View>
-            </View>
+            </Animated.View>
           </View>
         </Modal>
       ) : null}

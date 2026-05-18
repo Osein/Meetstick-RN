@@ -1,20 +1,17 @@
 import React, {useMemo} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions} from 'react-native';
-import {SvgUri} from 'react-native-svg';
+import {ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions} from 'react-native';
 import {CommonActions, StackActions} from '@react-navigation/native';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
+import RegisterWelcomeAsset from '../../../assets/images/register-welcome.svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
-export const WelcomeScreen: React.FC<Props> = ({navigation}) => {
+export const WelcomeScreen: React.FC<Props> = ({navigation, route}) => {
+  const {registrationToken} = route.params;
   const {width: screenWidth} = useWindowDimensions();
-  const welcomeIllustrationUri = useMemo(
-    () => Image.resolveAssetSource(require('../../../assets/images/register-welcome.svg')).uri,
-    []
-  );
   const heroWidth = useMemo(() => screenWidth * (255 / 390), [screenWidth]);
   const heroHeight = useMemo(() => heroWidth * (185 / 255), [heroWidth]);
   const handleBack = () => {
@@ -41,7 +38,7 @@ export const WelcomeScreen: React.FC<Props> = ({navigation}) => {
 
   return (
     <Screen background="#FFFFFF">
-      <AppHeader title="Kayıt Ol" onBack={handleBack} />
+      <AppHeader title="Kayıt ol" onBack={handleBack} showBottomBorder={false} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
@@ -49,7 +46,7 @@ export const WelcomeScreen: React.FC<Props> = ({navigation}) => {
       >
         <View style={styles.heroWrap}>
           <View style={[styles.hero, {width: heroWidth, height: heroHeight}]}>
-            <SvgUri width="100%" height="100%" uri={welcomeIllustrationUri} />
+            <RegisterWelcomeAsset width="100%" height="100%" />
           </View>
         </View>
 
@@ -68,7 +65,10 @@ export const WelcomeScreen: React.FC<Props> = ({navigation}) => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('RegisterInfo')}>
+        <TouchableOpacity
+          style={styles.cta}
+          onPress={() => navigation.navigate('RegisterInfo', {registrationToken})}
+        >
           <Text style={styles.ctaLabel}>Onaylıyorum</Text>
         </TouchableOpacity>
       </ScrollView>

@@ -131,12 +131,21 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
     }
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.reset({
+      index: 0,
+      routes: [{name: 'Onboarding'}]
+    });
+  };
+
   return (
     <Screen background="#fff">
-      <AppHeader
-        title="Telefon ile giriş"
-        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
-      />
+      <AppHeader title="Telefon ile giriş" onBack={handleBack} />
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <KeyboardDismissView
           style={{flex: 1, paddingHorizontal: 20, paddingTop: 20, justifyContent: 'space-between'}}

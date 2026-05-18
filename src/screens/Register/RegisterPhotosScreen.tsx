@@ -1,7 +1,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
-import {Alert, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Image, Modal, Pressable, Text, TouchableOpacity, View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Sortable, {SortableGridRenderItem} from 'react-native-sortables';
 import {RootStackParamList} from '@/navigation/types';
@@ -276,8 +276,6 @@ export const RegisterPhotosScreen: React.FC = () => {
                   <Text style={{fontSize: 18, color: '#007AFF'}}>Kamera ile Çek</Text>
                 </TouchableOpacity>
 
-                <View style={{height: StyleSheet.hairlineWidth, backgroundColor: palette.border}} />
-
                 <TouchableOpacity
                   onPress={() => openImagePicker('library')}
                   style={{
@@ -293,7 +291,6 @@ export const RegisterPhotosScreen: React.FC = () => {
 
                 {activeCell?.uri ? (
                   <>
-                    <View style={{height: StyleSheet.hairlineWidth, backgroundColor: palette.border}} />
                     <TouchableOpacity
                       onPress={removeActivePhoto}
                       style={{

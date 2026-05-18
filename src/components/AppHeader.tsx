@@ -8,11 +8,12 @@ type Props = {
   onBack?: () => void;
   rightElement?: React.ReactNode;
   onTitlePress?: () => void;
+  showBottomBorder?: boolean;
 };
 
-export const AppHeader: React.FC<Props> = ({title, onBack, rightElement, onTitlePress}) => {
+export const AppHeader: React.FC<Props> = ({title, onBack, rightElement, onTitlePress, showBottomBorder = true}) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, !showBottomBorder && styles.containerNoBorder]}>
       <View style={styles.left}>
         {onBack ? (
           <TouchableOpacity onPress={onBack} style={styles.iconButton}>
@@ -28,7 +29,9 @@ export const AppHeader: React.FC<Props> = ({title, onBack, rightElement, onTitle
           <Ionicons name="chevron-forward" size={16} color={palette.textSecondary} />
         </TouchableOpacity>
       ) : (
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.titleStandalone} numberOfLines={1}>
+          {title}
+        </Text>
       )}
       <View style={styles.right}>{rightElement}</View>
     </View>
@@ -45,6 +48,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.border
   },
+  containerNoBorder: {
+    borderBottomWidth: 0
+  },
   left: {width: 42, justifyContent: 'center'},
   right: {width: 42, alignItems: 'flex-end'},
   titleButton: {
@@ -56,6 +62,12 @@ const styles = StyleSheet.create({
     gap: 2
   },
   title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: palette.textPrimary
+  },
+  titleStandalone: {
+    flex: 1,
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',

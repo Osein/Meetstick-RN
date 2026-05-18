@@ -57,8 +57,8 @@ export const DeleteAccountOtpScreen: React.FC<Props> = ({navigation, route}) => 
       showSuccessToast('Hesabın silindi.');
       logout();
       navigation.reset({
-        index: 0,
-        routes: [{name: 'Login'}]
+        index: 1,
+        routes: [{name: 'Onboarding'}, {name: 'Login'}]
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Hesap silme doğrulaması başarısız oldu.';

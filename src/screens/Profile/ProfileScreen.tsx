@@ -114,7 +114,7 @@ export const ProfileScreen: React.FC = () => {
           {menuItem('Hesabı sil', () => navigation.navigate('DeleteAccount'), true)}
           {menuItem('Çıkış yap', () => {
             logout();
-            navigation.reset({index: 0, routes: [{name: 'Login'}]});
+            navigation.reset({index: 1, routes: [{name: 'Onboarding'}, {name: 'Login'}]});
           }, true)}
         </View>
       </ScrollView>
