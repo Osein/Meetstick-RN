@@ -1,6 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {ActivityIndicator, ScrollView, Text, View} from 'react-native';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
@@ -13,10 +12,10 @@ import {Interest} from '@/types';
 import {getInterests} from '@/services/interests/interestsService';
 import {showErrorToast} from '@/services/ui/toastService';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RegisterInterests'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RegisterInterests'>;
 
-export const RegisterInterestsScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
+export const RegisterInterestsScreen: React.FC<Props> = ({navigation, route}) => {
+  const {registrationToken} = route.params;
   const {state, updateRegisterDraft} = useAppContext();
   const [interestList, setInterestList] = useState<Interest[]>([]);
   const [selected, setSelected] = useState<Interest[]>(state.registerDraft.interests);
@@ -65,7 +64,7 @@ export const RegisterInterestsScreen: React.FC = () => {
 
   const handleContinue = () => {
     updateRegisterDraft({interests: selected});
-    navigation.navigate('RegisterPhotos');
+    navigation.navigate('RegisterPhotos', {registrationToken});
   };
 
   return (

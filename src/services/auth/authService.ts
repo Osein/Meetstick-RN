@@ -1,5 +1,6 @@
 import {Gender, Interest} from '@/types';
 import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
+import {optimizeImagesUnder1MB} from '@/services/media/imageOptimizationService';
 
 type LoginWithPhoneRequest = {
   phoneNumber: string;
@@ -72,6 +73,16 @@ type RequestDeleteAccountOtpApiResponse = {
   otpId?: string;
   phoneNumber?: string;
   expiresAt?: string;
+};
+
+type RegisterUserRequest = {
+  registrationToken: string;
+  name: string;
+  birthDate?: string;
+  gender?: Gender;
+  bio?: string;
+  interestIds: Array<string | number>;
+  photos: string[];
 };
 
 export const loginWithPhoneNumber = async (
@@ -302,5 +313,65 @@ export const resendDeleteAccountOtp = async (
         ? error.message
         : getServiceErrorMessage(error);
     throw new Error(message);
+  }
+};
+
+const inferMimeType = (uri: string): string => {
+  const lower = uri.toLowerCase();
+  if (lower.endsWith('.png')) {
+    return 'image/png';
+  }
+  if (lower.endsWith('.webp')) {
+    return 'image/webp';
+  }
+  if (lower.endsWith('.heic') || lower.endsWith('.heif')) {
+    return 'image/heic';
+  }
+  return 'image/jpeg';
+};
+
+export const registerUser = async (payload: RegisterUserRequest): Promise<VerifyOtpResponse> => {
+  const optimizedPhotos = await optimizeImagesUnder1MB(payload.photos);
+  const formData = new FormData();
+  formData.append('registrationToken', payload.registrationToken.trim());
+  formData.append('name', payload.name.trim());
+
+  const birthDate = payload.birthDate?.trim();
+  if (birthDate) {
+    formData.append('birthDate', birthDate);
+  }
+  if (payload.gender?.trim()) {
+    formData.append('gender', payload.gender);
+  }
+  if (payload.bio?.trim()) {
+    formData.append('bio', payload.bio.trim());
+  }
+
+  payload.interestIds.forEach(interestId => {
+    formData.append('interestIds', String(interestId));
+  });
+
+  optimizedPhotos.forEach((uri, index) => {
+    const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `register-photo-${index + 1}.${extension}`;
+    formData.append('photos', {
+      uri,
+      name: fileName,
+      type: inferMimeType(uri)
+    } as unknown as Blob);
+  });
+
+  try {
+    const response = await networkClient.post('/v1/auth/register', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${payload.registrationToken.trim()}`
+      }
+    });
+
+    const data = response.data as VerifyOtpResponse;
+    return data;
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error));
   }
 };

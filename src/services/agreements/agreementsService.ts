@@ -11,6 +11,15 @@ export type AgreementDetail = {
   htmlContent: string;
 };
 
+export type AgreementByKeyDetail = {
+  id: string;
+  key: string;
+  version: number;
+  title: string;
+  required: boolean;
+  htmlContent: string;
+};
+
 const normalizeAgreement = (item: unknown): AgreementListItem | null => {
   if (!item || typeof item !== 'object') {
     return null;
@@ -106,6 +115,67 @@ export const getAgreementDetail = async (
     return {
       title: detail.title,
       htmlContent: detail.htmlContent
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message === 'Sözleşme detayı alınamadı.'
+        ? error.message
+        : getServiceErrorMessage(error, 'Sözleşme detayı alınamadı.');
+    throw new Error(message);
+  }
+};
+
+export const getAgreementByKey = async (
+  key: 'TERMS' | 'PRIVACY',
+  accessToken?: string
+): Promise<AgreementByKeyDetail> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  try {
+    const response = await networkClient.get(`/v1/agreements/key/${encodeURIComponent(key)}`, {headers});
+    const payload = response.data as unknown;
+    const data =
+      payload && typeof payload === 'object' && 'data' in payload
+        ? ((payload as {data?: unknown}).data ?? payload)
+        : payload;
+
+    if (!data || typeof data !== 'object') {
+      throw new Error('Sözleşme detayı alınamadı.');
+    }
+
+    const detail = data as {
+      id?: unknown;
+      key?: unknown;
+      version?: unknown;
+      title?: unknown;
+      required?: unknown;
+      content?: unknown;
+    };
+
+    if (
+      typeof detail.id !== 'string' ||
+      typeof detail.key !== 'string' ||
+      typeof detail.version !== 'number' ||
+      typeof detail.title !== 'string' ||
+      typeof detail.required !== 'boolean' ||
+      typeof detail.content !== 'string'
+    ) {
+      throw new Error('Sözleşme detayı alınamadı.');
+    }
+
+    return {
+      id: detail.id,
+      key: detail.key,
+      version: detail.version,
+      title: detail.title,
+      required: detail.required,
+      htmlContent: detail.content
     };
   } catch (error) {
     const message =

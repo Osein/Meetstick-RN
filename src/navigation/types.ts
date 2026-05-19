@@ -7,10 +7,10 @@ export type RootStackParamList = {
   CountryPicker: undefined;
   Otp: {otpId: string; phoneNumber: string; displayPhoneNumber: string; otpEndTime: number};
   Welcome: {registrationToken: string};
-  RegisterInfo: undefined;
-  RegisterDescription: undefined;
-  RegisterInterests: undefined;
-  RegisterPhotos: undefined;
+  RegisterInfo: {registrationToken: string};
+  RegisterDescription: {registrationToken: string};
+  RegisterInterests: {registrationToken: string};
+  RegisterPhotos: {registrationToken: string};
   MainTabs: undefined;
   EventList: {categoryId: number; categoryTitle: string};
   EventDetail: {eventId: string};

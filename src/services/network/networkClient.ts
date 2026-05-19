@@ -18,20 +18,24 @@ export const networkClient = axios.create({
 });
 
 const secureStorage = new MeetstickSecureKeyValueStorage();
-let cachedAccessToken: string | undefined;
-let lastAccessTokenReadAt = 0;
+
+const logNetwork = (scope: 'request' | 'response' | 'error', payload: Record<string, unknown>) => {
+  const timestamp = new Date().toISOString();
+  const printable = JSON.stringify(
+    {
+      timestamp,
+      ...payload
+    },
+    null,
+    2
+  );
+  console.log(`[network][${scope}] ${printable}`);
+};
 
 const getLocalAccessToken = async (): Promise<string | undefined> => {
-  const now = Date.now();
-  if (cachedAccessToken && now - lastAccessTokenReadAt < 30_000) {
-    return cachedAccessToken;
-  }
-
   const profile = await secureStorage.getUserProfile();
   const token = profile?.accessToken?.trim();
-  cachedAccessToken = token && token.length > 0 ? token : undefined;
-  lastAccessTokenReadAt = now;
-  return cachedAccessToken;
+  return token && token.length > 0 ? token : undefined;
 };
 
 networkClient.interceptors.request.use(async config => {
@@ -53,9 +57,13 @@ networkClient.interceptors.request.use(async config => {
     }
   }
 
-  console.log('[network][request]', {
+  logNetwork('request', {
     method: config.method,
     url: `${config.baseURL || ''}${config.url || ''}`,
+    headers:
+      typeof (config.headers as {toJSON?: () => unknown})?.toJSON === 'function'
+        ? (config.headers as {toJSON: () => unknown}).toJSON()
+        : config.headers,
     params: config.params,
     data: config.data
   });
@@ -65,7 +73,7 @@ networkClient.interceptors.request.use(async config => {
 
 networkClient.interceptors.response.use(
   response => {
-    console.log('[network][response]', {
+    logNetwork('response', {
       method: response.config.method,
       url: `${response.config.baseURL || ''}${response.config.url || ''}`,
       status: response.status,
@@ -76,7 +84,7 @@ networkClient.interceptors.response.use(
   },
   error => {
     const axiosError = error as AxiosError;
-    console.log('[network][error]', {
+    logNetwork('error', {
       method: axiosError.config?.method,
       url: `${axiosError.config?.baseURL || ''}${axiosError.config?.url || ''}`,
       status: axiosError.response?.status,

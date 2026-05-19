@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Platform, Text, TextInput, View} from 'react-native';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
@@ -11,12 +10,12 @@ import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RegisterDescription'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RegisterDescription'>;
 const MIN_BIO_LENGTH = 50;
 const MAX_BIO_LENGTH = 1000;
 
-export const RegisterDescriptionScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
+export const RegisterDescriptionScreen: React.FC<Props> = ({navigation, route}) => {
+  const {registrationToken} = route.params;
   const {state, updateRegisterDraft} = useAppContext();
   const [bio, setBio] = useState(state.registerDraft.bio || '');
   const bioLength = bio.length;
@@ -32,7 +31,7 @@ export const RegisterDescriptionScreen: React.FC = () => {
 
   const handleContinue = () => {
     updateRegisterDraft({bio});
-    navigation.navigate('RegisterInterests');
+    navigation.navigate('RegisterInterests', {registrationToken});
   };
 
   return (

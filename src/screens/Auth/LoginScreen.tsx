@@ -15,6 +15,8 @@ import {COUNTRIES, getCountryByCode} from '@/utils/countries';
 import {loginWithPhoneNumber} from '@/services/auth/authService';
 import {showErrorToast} from '@/services/ui/toastService';
 import {useAppContext} from '@/context/AppContext';
+import {getAgreementByKey} from '@/services/agreements/agreementsService';
+import {useGlobalLoading} from '@/context/LoadingContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -34,6 +36,7 @@ const getInitialCountry = () => {
 
 export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const {state} = useAppContext();
+  const {state: loadingState, showLoading, hideLoading} = useGlobalLoading();
   const [selectedCountry, setSelectedCountry] = useState(getInitialCountry);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -65,23 +68,6 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const displayPhoneNumber = parsedPhoneNumber?.formatInternational();
   const isValid = Boolean(parsedPhoneNumber?.isValid());
   const requestPhoneNumber = fullPhoneNumber?.replace(/\s+/g, '').trim() ?? '';
-
-  const termsAgreement = useMemo(
-    () =>
-      state.legalAgreements.find(
-        agreement =>
-          agreement.key.toUpperCase().includes('TERM') || agreement.title.toLowerCase().includes('kullanim')
-      ),
-    [state.legalAgreements]
-  );
-  const privacyAgreement = useMemo(
-    () =>
-      state.legalAgreements.find(
-        agreement =>
-          agreement.key.toUpperCase().includes('PRIVACY') || agreement.title.toLowerCase().includes('gizlilik')
-      ),
-    [state.legalAgreements]
-  );
 
   const handlePhoneChange = (text: string) => {
     const parsed = parseIncompletePhoneNumber(text);
@@ -128,6 +114,46 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
       showErrorToast(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenTerms = async () => {
+    if (loadingState.visible) {
+      return;
+    }
+
+    try {
+      showLoading('Kullanım koşulları yükleniyor...');
+      const terms = await getAgreementByKey('TERMS', state.user?.accessToken);
+      navigation.navigate('WebView', {
+        title: terms.title || 'Kullanım Koşulları',
+        htmlContent: terms.htmlContent
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kullanım koşulları yüklenemedi.';
+      showErrorToast(message);
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const handleOpenPrivacy = async () => {
+    if (loadingState.visible) {
+      return;
+    }
+
+    try {
+      showLoading('Gizlilik politikası yükleniyor...');
+      const privacy = await getAgreementByKey('PRIVACY', state.user?.accessToken);
+      navigation.navigate('WebView', {
+        title: privacy.title || 'Gizlilik Politikası',
+        htmlContent: privacy.htmlContent
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gizlilik politikası yüklenemedi.';
+      showErrorToast(message);
+    } finally {
+      hideLoading();
     }
   };
 
@@ -196,29 +222,15 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
           <Text style={{color: palette.textSecondary, marginTop: 12}}>
             Devam ederek Meetstick{' '}
             <Text
-              style={termsAgreement ? {textDecorationLine: 'underline'} : undefined}
-              onPress={() =>
-                termsAgreement
-                  ? navigation.navigate('WebView', {
-                      title: termsAgreement.title,
-                      htmlContent: termsAgreement.htmlContent
-                    })
-                  : undefined
-              }
+              style={{textDecorationLine: 'underline'}}
+              onPress={handleOpenTerms}
             >
               kullanım koşullarını
             </Text>{' '}
             ve{' '}
             <Text
-              style={privacyAgreement ? {textDecorationLine: 'underline'} : undefined}
-              onPress={() =>
-                privacyAgreement
-                  ? navigation.navigate('WebView', {
-                      title: privacyAgreement.title,
-                      htmlContent: privacyAgreement.htmlContent
-                    })
-                  : undefined
-              }
+              style={{textDecorationLine: 'underline'}}
+              onPress={handleOpenPrivacy}
             >
               gizlilik politikasını
             </Text>{' '}

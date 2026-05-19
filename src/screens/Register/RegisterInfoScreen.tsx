@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   Animated,
   Easing,
@@ -26,7 +25,7 @@ import {KeyboardDismissView} from '@/components/KeyboardDismissView';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RegisterInfo'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RegisterInfo'>;
 
 const genders = [
   {value: 'MALE', label: 'Erkek'},
@@ -62,9 +61,32 @@ const formatDate = (date: Date): string => {
   return `${day} ${month} ${year}`;
 };
 
+const formatDateIso = (date: Date): string => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const parseDate = (value?: string): Date | null => {
   if (!value) {
     return null;
+  }
+
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return parsed;
   }
 
   const dottedParts = value.split('.');
@@ -115,8 +137,8 @@ const parseDate = (value?: string): Date | null => {
   return parsed;
 };
 
-export const RegisterInfoScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
+export const RegisterInfoScreen: React.FC<Props> = ({navigation, route}) => {
+  const {registrationToken} = route.params;
   const {state, updateRegisterDraft} = useAppContext();
   const [name, setName] = useState(state.registerDraft.name);
   const initialDate = parseDate(state.registerDraft.birthDate) || new Date(2000, 0, 1);
@@ -130,10 +152,14 @@ export const RegisterInfoScreen: React.FC = () => {
   const sheetTranslateY = useState(() => new Animated.Value(340))[0];
 
   const canContinue = useMemo(() => name.trim().length > 2 && birthDate.trim().length > 3, [name, birthDate]);
+  const birthDateDisplayValue = useMemo(
+    () => (birthDate ? formatDate(parseDate(birthDate) || birthDateValue) : ''),
+    [birthDate, birthDateValue]
+  );
 
   const handleContinue = () => {
     updateRegisterDraft({name, birthDate, gender});
-    navigation.navigate('RegisterDescription');
+    navigation.navigate('RegisterDescription', {registrationToken});
   };
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -144,7 +170,7 @@ export const RegisterInfoScreen: React.FC = () => {
 
     if (event.type === 'set' && selectedDate) {
       setBirthDateValue(selectedDate);
-      setBirthDate(formatDate(selectedDate));
+      setBirthDate(formatDateIso(selectedDate));
     }
   };
 
@@ -207,7 +233,7 @@ export const RegisterInfoScreen: React.FC = () => {
 
   const confirmIosDatePicker = () => {
     setBirthDateValue(iosPickerDate);
-    setBirthDate(formatDate(iosPickerDate));
+    setBirthDate(formatDateIso(iosPickerDate));
     setShowIosDatePicker(false);
   };
 
@@ -229,7 +255,7 @@ export const RegisterInfoScreen: React.FC = () => {
             <Text style={{fontWeight: '600', color: palette.textPrimary}}>Doğum Tarihi</Text>
             <TouchableOpacity onPress={openDatePicker} style={[inputStyle, {justifyContent: 'center'}]}>
               <Text style={{color: birthDate ? palette.textPrimary : palette.muted, fontSize: 16}}>
-                {birthDate}
+                {birthDateDisplayValue}
               </Text>
             </TouchableOpacity>
           </View>

@@ -9,6 +9,7 @@ import {Toasts} from '@backpackapp-io/react-native-toast';
 import * as SecureStore from 'expo-secure-store';
 import {AppNavigator} from '@/navigation/AppNavigator';
 import {AppProvider} from '@/context/AppContext';
+import {LoadingProvider} from '@/context/LoadingContext';
 import {SplashService} from '@/services/splash/splashService';
 import {OnboardingImageKey} from '@/config/AppConfigContainer';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
@@ -100,9 +101,11 @@ export default function App() {
         <SafeAreaProvider>
           <KeyboardProvider>
             <AppProvider initialUser={initialUser} initialLegalAgreements={initialLegalAgreements}>
-              <StatusBar style="dark" />
-              <AppNavigator />
-              <Toasts />
+              <LoadingProvider>
+                <StatusBar style="dark" />
+                <AppNavigator />
+                <Toasts />
+              </LoadingProvider>
             </AppProvider>
           </KeyboardProvider>
         </SafeAreaProvider>

@@ -1,6 +1,5 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Alert, Image, Modal, Pressable, Text, TouchableOpacity, View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Sortable, {SortableGridRenderItem} from 'react-native-sortables';
@@ -10,8 +9,10 @@ import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton} from '@/components/Buttons';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
+import {registerUser} from '@/services/auth/authService';
+import {showErrorToast} from '@/services/ui/toastService';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RegisterPhotos'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RegisterPhotos'>;
 const GRID_COUNT = 9;
 const MIN_REQUIRED_PHOTOS = 3;
 
@@ -46,17 +47,18 @@ const normalizeCells = (cells: PhotoCell[]): PhotoCell[] => {
   return buildCellsFromUris(uris);
 };
 
-export const RegisterPhotosScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const {state, updateRegisterDraft, completeRegistration} = useAppContext();
+export const RegisterPhotosScreen: React.FC<Props> = ({navigation, route}) => {
+  const {registrationToken} = route.params;
+  const {state, updateRegisterDraft, completeRegistration, completeLoginWithVerifiedProfile} = useAppContext();
   const [cells, setCells] = useState<PhotoCell[]>(() => buildCellsFromUris(state.registerDraft.photos));
   const [activeCellIndex, setActiveCellIndex] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const normalizedCells = useMemo(() => normalizeCells(cells), [cells]);
   const photos = useMemo(
     () => normalizedCells.filter(item => item.uri).map(item => item.uri as string),
     [normalizedCells]
   );
-  const canFinish = photos.length >= MIN_REQUIRED_PHOTOS;
+  const canFinish = photos.length >= MIN_REQUIRED_PHOTOS && !isSubmitting;
   const activeCell = activeCellIndex === null ? null : normalizedCells[activeCellIndex];
 
   const closeSheet = () => {
@@ -134,13 +136,46 @@ export const RegisterPhotosScreen: React.FC = () => {
     closeSheet();
   };
 
-  const handleFinish = () => {
-    updateRegisterDraft({photos});
-    completeRegistration({photos});
-    navigation.reset({
-      index: 0,
-      routes: [{name: 'MainTabs'}]
-    });
+  const handleFinish = async () => {
+    if (!canFinish) {
+      return;
+    }
+
+    const draft = {
+      ...state.registerDraft,
+      photos
+    };
+
+    try {
+      setIsSubmitting(true);
+      updateRegisterDraft({photos});
+      const response = await registerUser({
+        registrationToken,
+        name: draft.name,
+        birthDate: draft.birthDate,
+        gender: draft.gender,
+        bio: draft.bio,
+        agreementIds: state.legalAgreements.map(item => item.id),
+        interestIds: draft.interests.map(item => item.id),
+        photos: draft.photos
+      });
+
+      if (response.accessToken) {
+        await completeLoginWithVerifiedProfile(response);
+      } else {
+        completeRegistration({photos});
+      }
+
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'MainTabs'}]
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kayıt tamamlanamadı. Lütfen tekrar dene.';
+      showErrorToast(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderItem = useCallback<SortableGridRenderItem<PhotoCell>>(
@@ -230,7 +265,12 @@ export const RegisterPhotosScreen: React.FC = () => {
 
         <View style={{flex: 1}} />
         <View style={{marginBottom: 16}}>
-          <PrimaryButton label="Kullanmaya Başla" onPress={handleFinish} disabled={!canFinish} />
+          <PrimaryButton
+            label="Kullanmaya Başla"
+            onPress={handleFinish}
+            disabled={!canFinish}
+            loading={isSubmitting}
+          />
         </View>
       </View>
 
