@@ -24,6 +24,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {useAppContext} from '@/context/AppContext';
 import {getHomeFeed, HomeEvent, HomeInterestGroup} from '@/services/home/homeService';
 import {showErrorToast} from '@/services/ui/toastService';
+import {getRefreshVersion, subscribeRefresh} from '@/services/refresh/refreshStore';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type PermissionState = 'GRANTED' | 'DENIED';
@@ -90,8 +91,27 @@ export const DashboardScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       refreshLocationPermission();
-    }, [refreshLocationPermission])
+      if (permission === 'GRANTED') {
+        loadHome();
+      }
+    }, [loadHome, permission, refreshLocationPermission])
   );
+
+  useEffect(() => {
+    let previousVersion = getRefreshVersion('home');
+
+    const unsubscribe = subscribeRefresh(() => {
+      const nextVersion = getRefreshVersion('home');
+      if (nextVersion !== previousVersion) {
+        previousVersion = nextVersion;
+        if (permission === 'GRANTED') {
+          loadHome();
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [loadHome, permission]);
 
   useEffect(() => {
     if (permission === 'GRANTED') {

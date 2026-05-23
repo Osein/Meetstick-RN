@@ -71,7 +71,7 @@ export default function App() {
         if (startupPayload.userProfile) {
           await secureKeyValueStorage.saveUserProfile(startupPayload.userProfile);
           setInitialUser(mapVerifiedProfileToUser(startupPayload.userProfile));
-        } else if (savedProfile?.accessToken) {
+        } else if (savedProfile?.accessToken && startupPayload.hasUserFieldInSplash) {
           await secureKeyValueStorage.clearUserProfile();
           setInitialUser(undefined);
         } else if (savedProfile) {

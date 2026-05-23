@@ -81,6 +81,7 @@ type RegisterUserRequest = {
   birthDate?: string;
   gender?: Gender;
   bio?: string;
+  agreementIds: string[];
   interestIds: Array<string | number>;
   photos: string[];
 };
@@ -349,6 +350,13 @@ export const registerUser = async (payload: RegisterUserRequest): Promise<Verify
 
   payload.interestIds.forEach(interestId => {
     formData.append('interestIds', String(interestId));
+  });
+
+  payload.agreementIds.forEach(agreementId => {
+    const normalizedAgreementId = agreementId.trim();
+    if (normalizedAgreementId.length > 0) {
+      formData.append('agreementIds', normalizedAgreementId);
+    }
   });
 
   optimizedPhotos.forEach((uri, index) => {

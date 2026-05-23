@@ -22,6 +22,7 @@ type StartupPayload = {
   onboardingImageUrls: string[];
   legalAgreements: LegalAgreement[];
   userProfile?: VerifyOtpResponse;
+  hasUserFieldInSplash: boolean;
 };
 
 const isSvgUrl = (url: string): boolean => {
@@ -232,16 +233,19 @@ export class SplashService {
 
     const onboardingImageUrlsPromise = this.fetchOnboardingImageUrls(onboardingKeys);
 
-    let splashPayload: SplashConfigResponse = {};
+    let splashPayload: SplashConfigResponse | null = null;
+    let hasUserFieldInSplash = false;
     try {
       const response = await networkClient.get('/v1/auth/splash', {headers});
       splashPayload = response.data as SplashConfigResponse;
-    } catch {
-      splashPayload = {};
-    }
+      hasUserFieldInSplash =
+        splashPayload !== null &&
+        typeof splashPayload === 'object' &&
+        Object.prototype.hasOwnProperty.call(splashPayload, 'user');
+    } catch {}
 
     const onboardingImageUrls = await onboardingImageUrlsPromise;
-    const normalizedAgreements = Array.isArray(splashPayload.agreements)
+    const normalizedAgreements = Array.isArray(splashPayload?.agreements)
       ? splashPayload.agreements
           .map(normalizeAgreement)
           .filter((agreement): agreement is SplashAgreement => agreement !== null)
@@ -270,7 +274,8 @@ export class SplashService {
       legalAgreements: legalAgreementsWithHtml.filter(
         (agreement): agreement is LegalAgreement => agreement !== null
       ),
-      userProfile: normalizeUserProfile(splashPayload.user, accessToken)
+      userProfile: normalizeUserProfile(splashPayload?.user, accessToken),
+      hasUserFieldInSplash
     };
   }
 }

@@ -81,7 +81,7 @@ export const getAgreements = async (accessToken?: string): Promise<AgreementList
 
 export const getAgreementDetail = async (
   id: string,
-  version: string,
+  _version?: string,
   accessToken?: string
 ): Promise<AgreementDetail> => {
   const headers: Record<string, string> = {
@@ -93,28 +93,19 @@ export const getAgreementDetail = async (
   }
 
   try {
-    const response = await networkClient.get(
-      `/v1/agreements/${encodeURIComponent(id)}/${encodeURIComponent(version)}`,
-      {headers}
-    );
-    const payload = response.data as unknown;
-    const data =
-      payload && typeof payload === 'object' && 'data' in payload
-        ? ((payload as {data?: unknown}).data ?? payload)
-        : payload;
+    const response = await networkClient.get(`/v1/agreements/${encodeURIComponent(id)}/html-content`, {
+      headers
+    });
+    const payload = response.data as {id?: unknown; content?: unknown} | null;
 
-    if (!data || typeof data !== 'object') {
-      throw new Error('Sözleşme detayı alınamadı.');
-    }
-
-    const detail = data as Partial<AgreementDetail>;
-    if (typeof detail.title !== 'string' || typeof detail.htmlContent !== 'string') {
+    if (!payload || typeof payload !== 'object' || typeof payload.content !== 'string') {
       throw new Error('Sözleşme detayı alınamadı.');
     }
 
     return {
-      title: detail.title,
-      htmlContent: detail.htmlContent
+      // Title listeden geliyor; html-content endpoint sadece body dönüyor.
+      title: '',
+      htmlContent: payload.content
     };
   } catch (error) {
     const message =

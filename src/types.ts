@@ -114,7 +114,10 @@ export type NewMeetingDraft = {
   participantCount: string;
   description: string;
   isFutureEvent: boolean;
+  isAllDayEvent?: boolean;
   eventDateTime?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   locationAddress?: string;
   locationPlaceId?: string;
   latitude?: number;

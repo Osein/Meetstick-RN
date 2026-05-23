@@ -9,6 +9,7 @@ import {PrimaryButton, OutlinedButton} from '@/components/Buttons';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
 import {createEvent} from '@/services/events/eventsService';
+import {bumpRefreshKey} from '@/services/refresh/refreshStore';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -36,7 +37,13 @@ export const NewMeetingPhotosScreen: React.FC = () => {
       return true;
     }
 
-    return !!draft.eventDateTime && new Date(draft.eventDateTime).getTime() > Date.now();
+    if (!draft.startDateTime || !draft.endDateTime) {
+      return false;
+    }
+
+    const start = new Date(draft.startDateTime).getTime();
+    const end = new Date(draft.endDateTime).getTime();
+    return start > Date.now() && end > start;
   }, [state.newMeetingDraft]);
 
   const addRandomPhoto = () => {
@@ -76,7 +83,7 @@ export const NewMeetingPhotosScreen: React.FC = () => {
           description: state.newMeetingDraft.description.trim(),
           participantCount,
           isFutureEvent: state.newMeetingDraft.isFutureEvent,
-          eventDateTime: state.newMeetingDraft.isFutureEvent ? state.newMeetingDraft.eventDateTime : undefined,
+          eventDateTime: state.newMeetingDraft.isFutureEvent ? state.newMeetingDraft.startDateTime : undefined,
           location: {
             addressText: state.newMeetingDraft.locationAddress!,
             latitude: state.newMeetingDraft.latitude!,
@@ -88,6 +95,8 @@ export const NewMeetingPhotosScreen: React.FC = () => {
       });
 
       resetMeetingDraft();
+      bumpRefreshKey('home');
+      bumpRefreshKey('profile');
       Alert.alert('Oluşturuldu', 'Etkinlik başarıyla oluşturuldu.');
       navigation.navigate('MainTabs');
     } catch (error) {

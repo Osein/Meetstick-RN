@@ -1,6 +1,7 @@
 import axios, {AxiosError} from 'axios';
 import {API_BASE_URL} from '@/services/api/apiConfig';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
+import {markSessionExpired} from '@/services/auth/authSessionService';
 
 type ServiceErrorResponse = {
   messageId?: string;
@@ -18,6 +19,7 @@ export const networkClient = axios.create({
 });
 
 const secureStorage = new MeetstickSecureKeyValueStorage();
+const inFlightControllers = new Set<AbortController>();
 
 const logNetwork = (scope: 'request' | 'response' | 'error', payload: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
@@ -38,7 +40,17 @@ const getLocalAccessToken = async (): Promise<string | undefined> => {
   return token && token.length > 0 ? token : undefined;
 };
 
+export const cancelAllInFlightRequests = () => {
+  inFlightControllers.forEach(controller => controller.abort('SESSION_EXPIRED'));
+  inFlightControllers.clear();
+};
+
 networkClient.interceptors.request.use(async config => {
+  const controller = new AbortController();
+  config.signal = controller.signal;
+  (config as typeof config & {_abortController?: AbortController})._abortController = controller;
+  inFlightControllers.add(controller);
+
   const headersAny = config.headers as
     | {Authorization?: string; authorization?: string; set?: (name: string, value: string) => void}
     | undefined;
@@ -73,6 +85,11 @@ networkClient.interceptors.request.use(async config => {
 
 networkClient.interceptors.response.use(
   response => {
+    const responseConfig = response.config as typeof response.config & {_abortController?: AbortController};
+    if (responseConfig._abortController) {
+      inFlightControllers.delete(responseConfig._abortController);
+    }
+
     logNetwork('response', {
       method: response.config.method,
       url: `${response.config.baseURL || ''}${response.config.url || ''}`,
@@ -84,6 +101,11 @@ networkClient.interceptors.response.use(
   },
   error => {
     const axiosError = error as AxiosError;
+    const errorConfig = axiosError.config as (typeof axiosError.config & {_abortController?: AbortController}) | undefined;
+    if (errorConfig?._abortController) {
+      inFlightControllers.delete(errorConfig._abortController);
+    }
+
     logNetwork('error', {
       method: axiosError.config?.method,
       url: `${axiosError.config?.baseURL || ''}${axiosError.config?.url || ''}`,
@@ -91,6 +113,11 @@ networkClient.interceptors.response.use(
       data: axiosError.response?.data,
       message: axiosError.message
     });
+
+    if (axiosError.response?.status === 401) {
+      cancelAllInFlightRequests();
+      markSessionExpired();
+    }
 
     return Promise.reject(error);
   }

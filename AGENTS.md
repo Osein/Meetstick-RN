@@ -30,9 +30,15 @@ Bu dosya, bu repoda çalışan ajanlar (insan/AI) için kısa operasyon rehberid
 ## Form / Klavye Davranışı
 - Input içeren ekranlarda:
   - `react-native-keyboard-controller` `KeyboardAvoidingView` kullan.
-  - Boş alana dokununca klavye kapanması için `KeyboardDismissView` kullan:
-    - `src/components/KeyboardDismissView.tsx`
-- Input -> input geçişinde klavye kapanmamalı; boş alan/text dokunuşunda kapanmalı.
+  - Scroll olan formlarda dışarıya `Pressable/TouchableWithoutFeedback` wrapper koyma; scroll gesture'ını bozabilir.
+  - `ScrollView` ile şu kombinasyonu kullan:
+    - `keyboardShouldPersistTaps="handled"`
+    - `keyboardDismissMode="none"`
+  - Böylece:
+    - Input -> input geçişinde klavye kapanmaz.
+    - Boş alan tap'inde klavye kapanır.
+    - Boş alandan drag/scroll akıcı kalır.
+  - `KeyboardDismissView` (`src/components/KeyboardDismissView.tsx`) sadece scroll olmayan ekranlarda tercih edilebilir.
 
 ## Auth Akışı Notları
 - Login:
@@ -61,4 +67,3 @@ Bu dosya, bu repoda çalışan ajanlar (insan/AI) için kısa operasyon rehberid
 - Auth akışında:
   - Country seç -> Login’e geri dönüyor mu?
   - Telefon formatı yazarken doğru güncelleniyor mu?
-

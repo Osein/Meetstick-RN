@@ -52,7 +52,7 @@ export const AgreementsScreen: React.FC = () => {
         setActiveAgreementId(agreement.id);
         const detail = await getAgreementDetail(agreement.id, agreement.version, state.user?.accessToken);
         navigation.navigate('WebView', {
-          title: detail.title,
+          title: detail.title || agreement.title,
           htmlContent: detail.htmlContent
         });
       } catch (error) {
@@ -91,8 +91,7 @@ export const AgreementsScreen: React.FC = () => {
                 padding: 16,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: palette.border,
-                opacity: activeAgreementId && activeAgreementId !== item.id ? 0.6 : 1
+                borderColor: palette.border
               }}
             >
               <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>

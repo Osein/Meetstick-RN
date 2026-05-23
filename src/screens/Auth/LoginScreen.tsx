@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Platform, Pressable, Text, TextInput, View} from 'react-native';
+import {BackHandler, Platform, Pressable, Text, TextInput, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {getLocales} from 'expo-localization';
 import {AsYouType, CountryCode, parseIncompletePhoneNumber, parsePhoneNumberFromString} from 'libphonenumber-js';
@@ -17,6 +17,7 @@ import {showErrorToast} from '@/services/ui/toastService';
 import {useAppContext} from '@/context/AppContext';
 import {getAgreementByKey} from '@/services/agreements/agreementsService';
 import {useGlobalLoading} from '@/context/LoadingContext';
+import {resetSessionExpired} from '@/services/auth/authSessionService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -41,6 +42,10 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneDigits, setPhoneDigits] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    resetSessionExpired();
+  }, []);
 
   useEffect(() => {
     const code = route.params?.selectedCountry;
@@ -160,6 +165,13 @@ export const LoginScreen: React.FC<Props> = ({navigation, route}) => {
   const handleBack = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
+      return;
+    }
+
+    if (state.onboardingComplete) {
+      if (Platform.OS === 'android') {
+        BackHandler.exitApp();
+      }
       return;
     }
 

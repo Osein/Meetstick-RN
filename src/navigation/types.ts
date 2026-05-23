@@ -19,6 +19,7 @@ export type RootStackParamList = {
   Agreements: undefined;
   ContactUs: undefined;
   DeleteAccount: undefined;
+  Settings: undefined;
   ChatRoom: {eventId: string; title: string};
   ChatEventInfo: {eventId: string; title: string; fromChat?: boolean};
   DeleteAccountOtp: {
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   NewMeetingDetails: undefined;
   NewMeetingLocation: undefined;
   NewMeetingPhotos: undefined;
+  EditProfilePhotos: undefined;
 };
 
 export type MainTabParamList = {
