@@ -37,6 +37,7 @@ const defaultMeetingDraft: NewMeetingDraft = {
   participantCount: '',
   description: '',
   interests: [],
+  autoApproveParticipants: false,
   isFutureEvent: false,
   isAllDayEvent: false,
   photos: []

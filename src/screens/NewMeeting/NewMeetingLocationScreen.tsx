@@ -4,6 +4,7 @@ import {ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View} from
 import MapView, {MapPressEvent, Marker, Region} from 'react-native-maps';
 import {Ionicons} from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
@@ -50,6 +51,7 @@ const formatReverseGeocodedAddress = (result?: Location.LocationGeocodedAddress 
 
 export const NewMeetingLocationScreen: React.FC<Props> = ({navigation, route}) => {
   const {state, updateMeetingDraft} = useAppContext();
+  const {t} = useTranslation();
 
   const initialRegion = useMemo<Region>(() => {
     if (
@@ -168,7 +170,7 @@ export const NewMeetingLocationScreen: React.FC<Props> = ({navigation, route}) =
         longitude,
         addressText: ''
       });
-      Alert.alert('Adres bulunamadı', 'Bu konum için adres bilgisi alınamadı. Lütfen başka bir nokta deneyin.');
+      Alert.alert(t('newMeeting.location.addressNotFound'), t('newMeeting.location.addressNotFoundDescription'));
     } finally {
       setIsResolvingAddress(false);
     }
@@ -192,7 +194,7 @@ export const NewMeetingLocationScreen: React.FC<Props> = ({navigation, route}) =
   return (
     <Screen background="#fff" style={styles.screen}>
       <AppHeader
-        title="Konum seç"
+        title={t('newMeeting.location.title')}
         onBack={() => navigation.goBack()}
         rightElement={
           <TouchableOpacity
@@ -229,15 +231,15 @@ export const NewMeetingLocationScreen: React.FC<Props> = ({navigation, route}) =
             {isResolvingAddress ? (
               <View style={styles.locationLoadingRow}>
                 <ActivityIndicator color={palette.primary} />
-                <Text style={styles.locationLoadingText}>Adres bulunuyor...</Text>
+                <Text style={styles.locationLoadingText}>{t('newMeeting.location.resolving')}</Text>
               </View>
             ) : (
               <Text style={styles.locationOverlayText} numberOfLines={2}>
-                {selectedLocation.addressText || 'Adres bulunamadı'}
+                {selectedLocation.addressText || t('newMeeting.location.addressNotFound')}
               </Text>
             )}
             <PrimaryButton
-              label="Seçtiğim konumu kullan"
+              label={t('newMeeting.location.useCta')}
               onPress={applyLocation}
               disabled={isResolvingAddress || !selectedLocation.addressText}
               loading={isResolvingAddress}

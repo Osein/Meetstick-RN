@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import '@/i18n';
 import React, {useCallback, useEffect, useState} from 'react';
 import {StatusBar} from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';

@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {ActivityIndicator, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {useTranslation} from 'react-i18next';
 import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'NewMeetingSelectInteres
 
 export const NewMeetingSelectInterestScreen: React.FC<Props> = ({navigation}) => {
   const {state, updateMeetingDraft} = useAppContext();
+  const {t} = useTranslation();
   const insets = useSafeAreaInsets();
   const safeAreaFrame = useSafeAreaFrame();
   const [selected, setSelected] = useState<Interest[]>(state.newMeetingDraft.interests || []);
@@ -26,46 +28,15 @@ export const NewMeetingSelectInterestScreen: React.FC<Props> = ({navigation}) =>
   });
 
   useEffect(() => {
-    console.log('[interest-screen] mounted', {
-      insets,
-      safeAreaFrame,
-      isLoading: uiState.isLoading
-    });
-  }, []);
-
-  useEffect(() => {
-    console.log('[interest-screen] safe-area changed', {
-      insets,
-      safeAreaFrame,
-      isLoading: uiState.isLoading,
-      interestCount: uiState.interestList.length
-    });
-  }, [insets, safeAreaFrame, uiState.isLoading, uiState.interestList.length]);
-
-  useEffect(() => {
     const fetchInterests = async () => {
       try {
-        console.log('[interest-screen] fetch start', {
-          insets,
-          safeAreaFrame
-        });
         const response = await getInterests();
-        console.log('[interest-screen] fetch success', {
-          count: response.length,
-          insets,
-          safeAreaFrame
-        });
         setUiState({
           interestList: response,
           isLoading: false
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Ilgi alanlari alinamadi.';
-        console.log('[interest-screen] fetch error', {
-          message,
-          insets,
-          safeAreaFrame
-        });
+        const message = error instanceof Error ? error.message : 'Interests could not be loaded.';
         showErrorToast(message);
         setUiState(prev => ({
           interestList: prev.interestList,
@@ -94,31 +65,21 @@ export const NewMeetingSelectInterestScreen: React.FC<Props> = ({navigation}) =>
 
   return (
     <Screen background="#fff">
-      <AppHeader title="Kategori Sec" onBack={() => navigation.goBack()} />
+      <AppHeader title={t('newMeeting.interests.title')} onBack={() => navigation.goBack()} />
       <View
         style={styles.container}
         onLayout={event => {
-          const {x, y, width, height} = event.nativeEvent.layout;
-          console.log('[interest-screen] container layout', {
-            x,
-            y,
-            width,
-            height,
-            insets,
-            isLoading: uiState.isLoading
-          });
+          void event;
         }}
       >
-        <Text style={styles.title}>En az 1 kategori sec</Text>
-        <Text style={styles.description}>
-          Etkinligini en iyi anlatan bir veya birden fazla kategori sec.
-        </Text>
+        <Text style={styles.title}>{t('newMeeting.interests.headline')}</Text>
+        <Text style={styles.description}>{t('newMeeting.interests.description')}</Text>
 
         <View style={styles.content}>
           {uiState.isLoading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={palette.primary} />
-              <Text style={styles.loadingText}>Kategoriler yukleniyor...</Text>
+              <Text style={styles.loadingText}>{t('newMeeting.interests.loading')}</Text>
             </View>
           ) : (
             <ScrollView
@@ -140,7 +101,7 @@ export const NewMeetingSelectInterestScreen: React.FC<Props> = ({navigation}) =>
 
         {!uiState.isLoading ? (
           <View style={[styles.buttonWrap]}>
-            <PrimaryButton label="Sec" onPress={handleSubmit} disabled={!canSubmit} />
+            <PrimaryButton label={t('newMeeting.interests.selectCta')} onPress={handleSubmit} disabled={!canSubmit} />
           </View>
         ) : (
           <View style={[styles.buttonPlaceholder]} />

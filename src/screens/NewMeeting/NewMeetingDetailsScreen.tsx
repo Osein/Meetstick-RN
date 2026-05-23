@@ -15,8 +15,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
+import {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
+import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '@/navigation/types';
 import {DatePickerBottomSheet} from '@/components/DatePickerBottomSheet';
 import {PhotoSourcePickerSheet} from '@/components/PhotoSourcePickerSheet';
@@ -35,39 +36,10 @@ const getDefaultStartDate = (): Date => {
   return date;
 };
 
-const formatShortDate = (value?: string): string => {
-  const locale = Localization.getLocales()[0]?.languageTag || undefined;
-
-  if (!value) {
-    return getDefaultStartDate().toLocaleString(locale, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return getDefaultStartDate().toLocaleString(locale, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  }
-
-  return date.toLocaleString(locale, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-};
-
 export const NewMeetingDetailsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const {state, updateMeetingDraft} = useAppContext();
+  const {t, i18n} = useTranslation();
   const participantCountInputRef = useRef<TextInput>(null);
   const selectedInterests = state.newMeetingDraft.interests || [];
 
@@ -79,6 +51,9 @@ export const NewMeetingDetailsScreen: React.FC = () => {
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
   const [draftEventDate, setDraftEventDate] = useState<Date>(eventDateTime ? new Date(eventDateTime) : getDefaultStartDate());
   const [isAutoCreateChat, setIsAutoCreateChat] = useState(true);
+  const [isAutoApproveParticipants, setIsAutoApproveParticipants] = useState(
+    state.newMeetingDraft.autoApproveParticipants === true
+  );
   const [isCoverPickerVisible, setIsCoverPickerVisible] = useState(false);
   const [coverPhoto, setCoverPhoto] = useState<string | undefined>(state.newMeetingDraft.photos?.[0]);
 
@@ -103,6 +78,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
       participantCount,
       description,
       interests: selectedInterests,
+      autoApproveParticipants: isAutoApproveParticipants,
       isFutureEvent: true,
       isAllDayEvent: false,
       startDateTime: eventDateTime,
@@ -240,6 +216,21 @@ export const NewMeetingDetailsScreen: React.FC = () => {
     navigation.navigate('NewMeetingPhotos');
   };
 
+  const formattedDateTime = useMemo(() => {
+    if (!eventDateTime) {
+      return '';
+    }
+
+    const locale = i18n.resolvedLanguage || Localization.getLocales()[0]?.languageTag || undefined;
+    const sourceDate = new Date(eventDateTime);
+    return sourceDate.toLocaleString(locale, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }, [eventDateTime, i18n.resolvedLanguage]);
+
   return (
     <Screen background="#FFFFFF">
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -248,7 +239,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
             <TouchableOpacity activeOpacity={0.8} onPress={onBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={20} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Create New Event</Text>
+            <Text style={styles.headerTitle}>{t('newMeeting.create.title')}</Text>
             <View style={styles.backButton} />
           </View>
 
@@ -265,35 +256,35 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                   <Image source={{uri: coverPhoto}} style={styles.coverImage} resizeMode="cover" />
                   <View style={styles.coverOverlay}>
                     <Ionicons name="image-outline" size={20} color="#FFFFFF" />
-                    <Text style={styles.coverOverlayText}>CHANGE COVER</Text>
+                    <Text style={styles.coverOverlayText}>{t('newMeeting.cover.change')}</Text>
                   </View>
                 </>
               ) : (
                 <>
                   <Ionicons name="image-outline" size={22} color="#A8A29E" />
-                  <Text style={styles.coverText}>ADD COVER</Text>
+                  <Text style={styles.coverText}>{t('newMeeting.cover.add')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <View style={styles.formArea}>
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>EVENT TITLE</Text>
+                <Text style={styles.label}>{t('newMeeting.title.label')}</Text>
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
-                  placeholder="e.g. Saturday Morning Hike"
+                  placeholder={t('newMeeting.title.placeholder')}
                   placeholderTextColor="#A8A29E"
                   style={styles.inputText}
                 />
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>DESCRIPTION</Text>
+                <Text style={styles.label}>{t('newMeeting.description.label')}</Text>
                 <TextInput
                   value={description}
                   onChangeText={setDescription}
-                  placeholder="Tell people what the event is about..."
+                  placeholder={t('newMeeting.description.placeholder')}
                   placeholderTextColor="#A8A29E"
                   multiline
                   style={styles.textArea}
@@ -301,7 +292,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>CATEGORY</Text>
+                <Text style={styles.label}>{t('newMeeting.category.label')}</Text>
                 <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={onOpenInterests}>
                   <Text
                     style={selectedInterests.length ? styles.valueText : styles.placeholderValue}
@@ -309,14 +300,14 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                   >
                     {selectedInterests.length
                       ? selectedInterests.map(item => item.title).join(', ')
-                      : 'Select a category'}
+                      : t('newMeeting.category.placeholder')}
                   </Text>
                   <Ionicons name="chevron-down" size={16} color="#78716C" />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>LOCATION</Text>
+                <Text style={styles.label}>{t('newMeeting.location.label')}</Text>
                 <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={onOpenLocation}>
                   <View style={styles.locationLeft}>
                     <Ionicons name="location-outline" size={16} color="#A8A29E" />
@@ -324,18 +315,18 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                       style={locationAddress ? styles.locationValueText : styles.locationPlaceholderValue}
                       numberOfLines={2}
                     >
-                      {locationAddress || 'Add location or address'}
+                      {locationAddress || t('newMeeting.location.placeholder')}
                     </Text>
                   </View>
                   <View style={styles.mapTextWrap}>
-                    <Text style={styles.mapText}>MAP</Text>
+                    <Text style={styles.mapText}>{t('newMeeting.location.mapCta')}</Text>
                   </View>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.dualRow}>
                 <View style={[styles.fieldGroup, styles.flexPart]}>
-                  <Text style={styles.label}>MAX PEOPLE</Text>
+                  <Text style={styles.label}>{t('newMeeting.maxPeople.label')}</Text>
                   <View style={styles.rowInput}>
                     <TouchableOpacity activeOpacity={0.8} onPress={decreaseParticipants} style={styles.stepButton}>
                       <Ionicons name="remove" size={16} color="#78716C" />
@@ -360,19 +351,21 @@ export const NewMeetingDetailsScreen: React.FC = () => {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>DATE</Text>
+                <Text style={styles.label}>{t('newMeeting.date.label')}</Text>
                 <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={openDatePicker}>
                   <View style={styles.inlineIconText}>
                     <Ionicons name="calendar-outline" size={15} color="#78716C" />
-                    <Text style={styles.valueText}>{formatShortDate(eventDateTime)}</Text>
+                    <Text style={eventDateTime ? styles.valueText : styles.placeholderValue}>
+                      {eventDateTime ? formattedDateTime : t('newMeeting.date.placeholder')}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.switchRow}>
-                <View>
-                  <Text style={styles.switchTitle}>Auto-create Chat Room</Text>
-                  <Text style={styles.switchSub}>Allow participants to chat instantly</Text>
+                <View style={styles.switchContent}>
+                  <Text style={styles.switchTitle}>{t('newMeeting.chat.autoCreateTitle')}</Text>
+                  <Text style={styles.switchSub}>{t('newMeeting.chat.autoCreateDescription')}</Text>
                 </View>
                 <Switch
                   value={isAutoCreateChat}
@@ -380,6 +373,22 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                   trackColor={{false: '#D6D3D1', true: '#FF6F61'}}
                   thumbColor="#FFFFFF"
                   ios_backgroundColor="#D6D3D1"
+                  style={styles.switchControl}
+                />
+              </View>
+
+              <View style={styles.switchRow}>
+                <View style={styles.switchContent}>
+                  <Text style={styles.switchTitle}>{t('newMeeting.approval.autoApproveTitle')}</Text>
+                  <Text style={styles.switchSub}>{t('newMeeting.approval.autoApproveDescription')}</Text>
+                </View>
+                <Switch
+                  value={isAutoApproveParticipants}
+                  onValueChange={setIsAutoApproveParticipants}
+                  trackColor={{false: '#D6D3D1', true: '#FF6F61'}}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="#D6D3D1"
+                  style={styles.switchControl}
                 />
               </View>
             </View>
@@ -391,14 +400,14 @@ export const NewMeetingDetailsScreen: React.FC = () => {
               style={[styles.primaryButton, !canContinue && styles.primaryButtonDisabled]}
             >
               <Ionicons name="add" size={17} color="#fff" />
-              <Text style={styles.primaryButtonText}>Create Event</Text>
+              <Text style={styles.primaryButtonText}>{t('newMeeting.create.cta')}</Text>
             </TouchableOpacity>
           </ScrollView>
 
           <PhotoSourcePickerSheet
             visible={isCoverPickerVisible}
-            title="Kapak Fotografı"
-            libraryLabel={coverPhoto ? 'Galeriden Degistir' : 'Galeriden Sec'}
+            title={t('newMeeting.cover.sheetTitle')}
+            libraryLabel={coverPhoto ? t('newMeeting.cover.changeGallery') : t('newMeeting.cover.pickGallery')}
             showRemove={Boolean(coverPhoto)}
             onCameraPress={() => handleCoverPick('camera')}
             onLibraryPress={() => handleCoverPick('library')}
@@ -410,6 +419,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
             visible={isDatePickerVisible}
             value={draftEventDate}
             minimumDate={new Date()}
+            title={t('newMeeting.date.sheetTitle')}
             onChange={onDateChange}
             onClose={closeDatePicker}
             onConfirm={applyDatePicker}
@@ -418,6 +428,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
           <TimePickerBottomSheet
             visible={isTimePickerVisible}
             value={draftEventDate}
+            title={t('newMeeting.date.timeSheetTitle')}
             onChange={onTimeChange}
             onClose={closeTimePicker}
             onConfirm={applyTimePicker}
@@ -646,8 +657,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between'
+  },
+  switchContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 16
   },
   switchTitle: {
     color: '#0F172A',
@@ -663,6 +679,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 12,
     lineHeight: 16
+  },
+  switchControl: {
+    marginTop: 2
   },
   primaryButton: {
     width: '88.8%',

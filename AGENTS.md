@@ -27,6 +27,26 @@ Bu dosya, bu repoda çalışan ajanlar (insan/AI) için kısa operasyon rehberid
 - Navigation type’ları mutlaka `RootStackParamList` ile senkron tutulmalı.
 - Mock veri kullanımı: `src/data/mockData.ts`
 
+## Localization / i18n Kuralları
+- Çeviri altyapısı: `i18next` + `react-i18next`
+- Bootstrap dosyası: `src/i18n/index.ts`
+- Locale dosyaları flat JSON formatındadır:
+  - `src/i18n/locales/en.json`
+  - `src/i18n/locales/tr-TR.json`
+- Nested JSON kullanma; key’ler noktayla ayrılmış anlamlı flat key olmalı.
+  - Doğru örnek: `newMeeting.location.searchTitle`
+  - Yanlış örnek: `{ "newMeeting": { "location": { "searchTitle": "..." }}}`
+- Key isimlendirme kuralı:
+  - feature bazlı başla: `newMeeting`, `auth`, `profile`, `common`
+  - sonra ekran/alan/amaç kırılımı ver: `newMeeting.date.sheetTitle`
+- Ortak buton/metinler için `common.*` altında key aç.
+- Yeni UI string eklerken hardcode text bırakma; önce locale dosyalarına ekle, sonra `t('...')` ile kullan.
+- `useTranslation()` default `translation` namespace ile kullanılmalı; namespace string verme.
+- Tarih/saat gibi locale-sensitive formatlarda cihaz locale’ini kullan:
+  - `expo-localization` üzerinden locale al
+  - formatı locale-aware yap, `en-US` gibi sabit locale hardcode etme
+- Backend override desteği sonra eklenecek; şimdilik kaynak bundle içindeki locale JSON dosyalarıdır.
+
 ## Form / Klavye Davranışı
 - Input içeren ekranlarda:
   - `react-native-keyboard-controller` `KeyboardAvoidingView` kullan.

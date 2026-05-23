@@ -1,6 +1,7 @@
 import React from 'react';
 import {Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
+import {useTranslation} from 'react-i18next';
 import {palette} from '@/theme/colors';
 
 type DatePickerBottomSheetProps = {
@@ -17,17 +18,19 @@ export const DatePickerBottomSheet: React.FC<DatePickerBottomSheetProps> = ({
   visible,
   value,
   minimumDate,
-  title = 'Tarih seç',
+  title,
   onChange,
   onClose,
   onConfirm
 }) => {
+  const {t} = useTranslation();
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <View style={styles.handle} />
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title}>{title || t('newMeeting.date.sheetTitle')}</Text>
 
           <View style={styles.pickerWrap}>
             <DateTimePicker
@@ -43,10 +46,10 @@ export const DatePickerBottomSheet: React.FC<DatePickerBottomSheetProps> = ({
 
           <View style={styles.actions}>
             <TouchableOpacity activeOpacity={0.85} style={styles.secondaryButton} onPress={onClose}>
-              <Text style={styles.secondaryButtonText}>Vazgeç</Text>
+              <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} style={styles.primaryButton} onPress={onConfirm}>
-              <Text style={styles.primaryButtonText}>Devam et</Text>
+              <Text style={styles.primaryButtonText}>{t('newMeeting.date.next')}</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

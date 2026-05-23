@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {CommonActions} from '@react-navigation/native';
 import {ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {useTranslation} from 'react-i18next';
 import {AppHeader} from '@/components/AppHeader';
 import {Screen} from '@/components/Screen';
 import {RootStackParamList} from '@/navigation/types';
@@ -17,6 +18,7 @@ const INPUT_DEBOUNCE_MS = 400;
 
 export const NewMeetingLocationSearchScreen: React.FC<Props> = ({navigation, route}) => {
   const {state} = useAppContext();
+  const {t} = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlaceSearchItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -160,12 +162,12 @@ export const NewMeetingLocationSearchScreen: React.FC<Props> = ({navigation, rou
 
   return (
     <Screen background="#FFFFFF">
-      <AppHeader title="Konum ara" onBack={() => navigation.goBack()} />
+      <AppHeader title={t('newMeeting.location.searchTitle')} onBack={() => navigation.goBack()} />
       <View style={styles.container}>
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Konum ara"
+          placeholder={t('newMeeting.location.searchPlaceholder')}
           autoFocus
           style={styles.input}
           returnKeyType="search"
@@ -179,7 +181,7 @@ export const NewMeetingLocationSearchScreen: React.FC<Props> = ({navigation, rou
 
         {!isLoading && hasSearched && results.length === 0 ? (
           <View style={styles.feedbackWrap}>
-            <Text style={styles.feedbackText}>No places found</Text>
+            <Text style={styles.feedbackText}>{t('common.noPlacesFound')}</Text>
           </View>
         ) : null}
 
