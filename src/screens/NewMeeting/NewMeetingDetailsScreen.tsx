@@ -1,8 +1,11 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
 import {Ionicons} from '@expo/vector-icons';
+import * as Localization from 'expo-localization';
 import {
+  Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,12 +15,16 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import DateTimePicker, {DateTimePickerAndroid, DateTimePickerEvent} from '@react-native-community/datetimepicker';
+import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {KeyboardAvoidingView} from 'react-native-keyboard-controller';
 import {RootStackParamList} from '@/navigation/types';
+import {DatePickerBottomSheet} from '@/components/DatePickerBottomSheet';
+import {PhotoSourcePickerSheet} from '@/components/PhotoSourcePickerSheet';
 import {Screen} from '@/components/Screen';
+import {TimePickerBottomSheet} from '@/components/TimePickerBottomSheet';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
+import {pickPhoto} from '@/services/media/photoPickerService';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -29,40 +36,51 @@ const getDefaultStartDate = (): Date => {
 };
 
 const formatShortDate = (value?: string): string => {
+  const locale = Localization.getLocales()[0]?.languageTag || undefined;
+
   if (!value) {
-    return 'Tomorrow';
+    return getDefaultStartDate().toLocaleString(locale, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return 'Tomorrow';
+    return getDefaultStartDate().toLocaleString(locale, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-
-  if (
-    date.getDate() === tomorrow.getDate() &&
-    date.getMonth() === tomorrow.getMonth() &&
-    date.getFullYear() === tomorrow.getFullYear()
-  ) {
-    return 'Tomorrow';
-  }
-
-  return date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+  return date.toLocaleString(locale, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
 };
 
 export const NewMeetingDetailsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const {state, updateMeetingDraft} = useAppContext();
+  const participantCountInputRef = useRef<TextInput>(null);
+  const selectedInterests = state.newMeetingDraft.interests || [];
 
   const [title, setTitle] = useState(state.newMeetingDraft.title);
   const [participantCount, setParticipantCount] = useState(state.newMeetingDraft.participantCount || '5');
   const [description, setDescription] = useState(state.newMeetingDraft.description);
   const [eventDateTime, setEventDateTime] = useState<string | undefined>(state.newMeetingDraft.startDateTime || state.newMeetingDraft.eventDateTime);
-  const [showIosDatePicker, setShowIosDatePicker] = useState(false);
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
+  const [draftEventDate, setDraftEventDate] = useState<Date>(eventDateTime ? new Date(eventDateTime) : getDefaultStartDate());
   const [isAutoCreateChat, setIsAutoCreateChat] = useState(true);
+  const [isCoverPickerVisible, setIsCoverPickerVisible] = useState(false);
+  const [coverPhoto, setCoverPhoto] = useState<string | undefined>(state.newMeetingDraft.photos?.[0]);
 
   const locationAddress = state.newMeetingDraft.locationAddress || '';
 
@@ -74,25 +92,63 @@ export const NewMeetingDetailsScreen: React.FC = () => {
       Number.isFinite(peopleCount) &&
       peopleCount > 0 &&
       description.trim().length > 5 &&
-      locationAddress.trim().length > 3
+      locationAddress.trim().length > 3 &&
+      selectedInterests.length > 0
     );
-  }, [title, participantCount, description, locationAddress]);
+  }, [title, participantCount, description, locationAddress, selectedInterests.length]);
 
   const persistDraft = () => {
     updateMeetingDraft({
       title,
       participantCount,
       description,
+      interests: selectedInterests,
       isFutureEvent: true,
       isAllDayEvent: false,
       startDateTime: eventDateTime,
-      eventDateTime
+      eventDateTime,
+      photos: coverPhoto ? [coverPhoto] : []
     });
+  };
+
+  const closeCoverPicker = () => {
+    setIsCoverPickerVisible(false);
+  };
+
+  const openCoverPicker = () => {
+    setIsCoverPickerVisible(true);
+  };
+
+  const handleCoverPick = async (source: 'camera' | 'library') => {
+    try {
+      const result = await pickPhoto(source);
+      if (result.status === 'permission_denied') {
+        Alert.alert('Izin gerekli', result.message);
+        return;
+      }
+      if (result.status === 'success') {
+        setCoverPhoto(result.uri);
+      }
+    } catch {
+      Alert.alert('Hata', 'Fotograf secilirken bir sorun olustu. Lutfen tekrar dene.');
+    } finally {
+      closeCoverPicker();
+    }
+  };
+
+  const removeCoverPhoto = () => {
+    setCoverPhoto(undefined);
+    closeCoverPicker();
   };
 
   const onOpenLocation = () => {
     persistDraft();
     navigation.navigate('NewMeetingLocation');
+  };
+
+  const onOpenInterests = () => {
+    persistDraft();
+    navigation.navigate('NewMeetingSelectInterest');
   };
 
   const onBack = () => {
@@ -109,25 +165,42 @@ export const NewMeetingDetailsScreen: React.FC = () => {
       return;
     }
 
-    const baseDate = eventDateTime ? new Date(eventDateTime) : getDefaultStartDate();
+    const baseDate = new Date(draftEventDate);
     baseDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-    setEventDateTime(baseDate.toISOString());
+    setDraftEventDate(baseDate);
   };
 
-  const openDatePicker = () => {
-    const pickerDate = eventDateTime ? new Date(eventDateTime) : getDefaultStartDate();
-
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: pickerDate,
-        mode: 'date',
-        minimumDate: new Date(),
-        onChange: onDateChange
-      });
+  const onTimeChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (!selectedDate) {
       return;
     }
 
-    setShowIosDatePicker(prev => !prev);
+    const baseDate = new Date(draftEventDate);
+    baseDate.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+    setDraftEventDate(baseDate);
+  };
+
+  const openDatePicker = () => {
+    setDraftEventDate(eventDateTime ? new Date(eventDateTime) : getDefaultStartDate());
+    setIsDatePickerVisible(true);
+  };
+
+  const closeDatePicker = () => {
+    setIsDatePickerVisible(false);
+  };
+
+  const applyDatePicker = () => {
+    setIsDatePickerVisible(false);
+    setIsTimePickerVisible(true);
+  };
+
+  const closeTimePicker = () => {
+    setIsTimePickerVisible(false);
+  };
+
+  const applyTimePicker = () => {
+    setEventDateTime(draftEventDate.toISOString());
+    setIsTimePickerVisible(false);
   };
 
   const increaseParticipants = () => {
@@ -138,6 +211,28 @@ export const NewMeetingDetailsScreen: React.FC = () => {
   const decreaseParticipants = () => {
     const nextValue = Math.max(1, Number(participantCount || '1') - 1);
     setParticipantCount(String(nextValue));
+  };
+
+  const onParticipantCountChange = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setParticipantCount(numericValue);
+  };
+
+  const onParticipantCountBlur = () => {
+    const normalizedValue = Math.max(1, Number(participantCount || '1'));
+    setParticipantCount(String(normalizedValue));
+  };
+
+  const onParticipantCountFocus = () => {
+    requestAnimationFrame(() => {
+      const selectionIndex = participantCount.length;
+      participantCountInputRef.current?.setNativeProps({
+        selection: {
+          start: selectionIndex,
+          end: selectionIndex
+        }
+      });
+    });
   };
 
   const onNext = () => {
@@ -164,9 +259,21 @@ export const NewMeetingDetailsScreen: React.FC = () => {
             keyboardDismissMode="none"
             showsVerticalScrollIndicator={false}
           >
-            <TouchableOpacity activeOpacity={0.85} style={styles.coverBlock}>
-              <Ionicons name="image-outline" size={22} color="#A8A29E" />
-              <Text style={styles.coverText}>ADD COVER</Text>
+            <TouchableOpacity activeOpacity={0.85} style={styles.coverBlock} onPress={openCoverPicker}>
+              {coverPhoto ? (
+                <>
+                  <Image source={{uri: coverPhoto}} style={styles.coverImage} resizeMode="cover" />
+                  <View style={styles.coverOverlay}>
+                    <Ionicons name="image-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.coverOverlayText}>CHANGE COVER</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={22} color="#A8A29E" />
+                  <Text style={styles.coverText}>ADD COVER</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <View style={styles.formArea}>
@@ -182,9 +289,28 @@ export const NewMeetingDetailsScreen: React.FC = () => {
               </View>
 
               <View style={styles.fieldGroup}>
+                <Text style={styles.label}>DESCRIPTION</Text>
+                <TextInput
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Tell people what the event is about..."
+                  placeholderTextColor="#A8A29E"
+                  multiline
+                  style={styles.textArea}
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
                 <Text style={styles.label}>CATEGORY</Text>
-                <TouchableOpacity activeOpacity={0.85} style={styles.rowInput}>
-                  <Text style={styles.valueText}>Select a category</Text>
+                <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={onOpenInterests}>
+                  <Text
+                    style={selectedInterests.length ? styles.valueText : styles.placeholderValue}
+                    numberOfLines={1}
+                  >
+                    {selectedInterests.length
+                      ? selectedInterests.map(item => item.title).join(', ')
+                      : 'Select a category'}
+                  </Text>
                   <Ionicons name="chevron-down" size={16} color="#78716C" />
                 </TouchableOpacity>
               </View>
@@ -194,11 +320,16 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                 <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={onOpenLocation}>
                   <View style={styles.locationLeft}>
                     <Ionicons name="location-outline" size={16} color="#A8A29E" />
-                    <Text style={locationAddress ? styles.valueText : styles.placeholderValue}>
+                    <Text
+                      style={locationAddress ? styles.locationValueText : styles.locationPlaceholderValue}
+                      numberOfLines={2}
+                    >
                       {locationAddress || 'Add location or address'}
                     </Text>
                   </View>
-                  <Text style={styles.mapText}>MAP</Text>
+                  <View style={styles.mapTextWrap}>
+                    <Text style={styles.mapText}>MAP</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
 
@@ -209,47 +340,33 @@ export const NewMeetingDetailsScreen: React.FC = () => {
                     <TouchableOpacity activeOpacity={0.8} onPress={decreaseParticipants} style={styles.stepButton}>
                       <Ionicons name="remove" size={16} color="#78716C" />
                     </TouchableOpacity>
-                    <Text style={styles.countText}>{participantCount || '1'}</Text>
+                    <TextInput
+                      ref={participantCountInputRef}
+                      value={participantCount}
+                      onChangeText={onParticipantCountChange}
+                      onBlur={onParticipantCountBlur}
+                      onFocus={onParticipantCountFocus}
+                      keyboardType="number-pad"
+                      returnKeyType="done"
+                      maxLength={4}
+                      style={styles.countInput}
+                      textAlign="center"
+                    />
                     <TouchableOpacity activeOpacity={0.8} onPress={increaseParticipants} style={styles.stepButton}>
                       <Ionicons name="add" size={16} color="#78716C" />
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                <View style={[styles.fieldGroup, styles.flexPart]}>
-                  <Text style={styles.label}>DATE</Text>
-                  <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={openDatePicker}>
-                    <View style={styles.locationLeft}>
-                      <Ionicons name="calendar-outline" size={15} color="#78716C" />
-                      <Text style={styles.valueText}>{formatShortDate(eventDateTime)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
               </View>
 
-              {Platform.OS === 'ios' && showIosDatePicker ? (
-                <View style={styles.iosPickerWrap}>
-                  <DateTimePicker
-                    mode="date"
-                    display="inline"
-                    value={eventDateTime ? new Date(eventDateTime) : getDefaultStartDate()}
-                    minimumDate={new Date()}
-                    accentColor={palette.primary}
-                    onChange={onDateChange}
-                  />
-                </View>
-              ) : null}
-
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>DESCRIPTION</Text>
-                <TextInput
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Tell people what the event is about..."
-                  placeholderTextColor="#A8A29E"
-                  multiline
-                  style={styles.textArea}
-                />
+                <Text style={styles.label}>DATE</Text>
+                <TouchableOpacity activeOpacity={0.85} style={styles.rowInput} onPress={openDatePicker}>
+                  <View style={styles.inlineIconText}>
+                    <Ionicons name="calendar-outline" size={15} color="#78716C" />
+                    <Text style={styles.valueText}>{formatShortDate(eventDateTime)}</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.switchRow}>
@@ -277,6 +394,34 @@ export const NewMeetingDetailsScreen: React.FC = () => {
               <Text style={styles.primaryButtonText}>Create Event</Text>
             </TouchableOpacity>
           </ScrollView>
+
+          <PhotoSourcePickerSheet
+            visible={isCoverPickerVisible}
+            title="Kapak Fotografı"
+            libraryLabel={coverPhoto ? 'Galeriden Degistir' : 'Galeriden Sec'}
+            showRemove={Boolean(coverPhoto)}
+            onCameraPress={() => handleCoverPick('camera')}
+            onLibraryPress={() => handleCoverPick('library')}
+            onRemovePress={removeCoverPhoto}
+            onClose={closeCoverPicker}
+          />
+
+          <DatePickerBottomSheet
+            visible={isDatePickerVisible}
+            value={draftEventDate}
+            minimumDate={new Date()}
+            onChange={onDateChange}
+            onClose={closeDatePicker}
+            onConfirm={applyDatePicker}
+          />
+
+          <TimePickerBottomSheet
+            visible={isTimePickerVisible}
+            value={draftEventDate}
+            onChange={onTimeChange}
+            onClose={closeTimePicker}
+            onConfirm={applyTimePicker}
+          />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -331,7 +476,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAF9',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: 8,
+    overflow: 'hidden'
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E7E5E4'
+  },
+  coverOverlay: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.28)'
+  },
+  coverOverlayText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter',
+    fontWeight: '700',
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.6
   },
   coverText: {
     color: '#78716C',
@@ -384,12 +554,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24
   },
+  locationValueText: {
+    color: '#0F172A',
+    fontFamily: 'Inter',
+    fontWeight: '400',
+    fontSize: 16,
+    lineHeight: 24,
+    flexShrink: 1
+  },
   placeholderValue: {
     color: '#A8A29E',
     fontFamily: 'Inter',
     fontWeight: '400',
     fontSize: 16,
     lineHeight: 24
+  },
+  locationPlaceholderValue: {
+    color: '#A8A29E',
+    fontFamily: 'Inter',
+    fontWeight: '400',
+    fontSize: 16,
+    lineHeight: 24,
+    flexShrink: 1
   },
   mapText: {
     color: '#FF6F61',
@@ -400,6 +586,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6
   },
   locationLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12
+  },
+  mapTextWrap: {
+    minWidth: 36,
+    alignItems: 'flex-end',
+    justifyContent: 'center'
+  },
+  inlineIconText: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -418,20 +617,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  countText: {
+  countInput: {
     color: '#0F172A',
     fontFamily: 'Inter',
     fontWeight: '500',
     fontSize: 16,
     lineHeight: 24,
-    minWidth: 28,
-    textAlign: 'center'
-  },
-  iosPickerWrap: {
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-    borderRadius: 12,
-    overflow: 'hidden'
+    minWidth: 56,
+    textAlign: 'center',
+    paddingVertical: 0
   },
   textArea: {
     borderBottomWidth: 1,
@@ -489,5 +683,5 @@ const styles = StyleSheet.create({
     fontSize: 30 / 1.6667,
     lineHeight: 28,
     letterSpacing: 0.45
-  }
+  },
 });

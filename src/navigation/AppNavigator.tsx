@@ -26,7 +26,9 @@ import {ChatRoomScreen} from '@/screens/Messages/ChatRoomScreen';
 import {ChatEventInfoScreen} from '@/screens/Messages/ChatEventInfoScreen';
 import {WebViewScreen} from '@/screens/Web/WebViewScreen';
 import {NewMeetingDetailsScreen} from '@/screens/NewMeeting/NewMeetingDetailsScreen';
+import {NewMeetingSelectInterestScreen} from '@/screens/NewMeeting/NewMeetingSelectInterestScreen';
 import {NewMeetingLocationScreen} from '@/screens/NewMeeting/NewMeetingLocationScreen';
+import {NewMeetingLocationSearchScreen} from '@/screens/NewMeeting/NewMeetingLocationSearchScreen';
 import {NewMeetingPhotosScreen} from '@/screens/NewMeeting/NewMeetingPhotosScreen';
 import {useAppContext} from '@/context/AppContext';
 import {resetSessionExpired, subscribeSessionExpired} from '@/services/auth/authSessionService';
@@ -88,7 +90,9 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="DeleteAccountOtp" component={DeleteAccountOtpScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
         <Stack.Screen name="NewMeetingDetails" component={NewMeetingDetailsScreen} />
+        <Stack.Screen name="NewMeetingSelectInterest" component={NewMeetingSelectInterestScreen} />
         <Stack.Screen name="NewMeetingLocation" component={NewMeetingLocationScreen} />
+        <Stack.Screen name="NewMeetingLocationSearch" component={NewMeetingLocationSearchScreen} />
         <Stack.Screen name="NewMeetingPhotos" component={NewMeetingPhotosScreen} />
       </Stack.Navigator>
     </NavigationContainer>

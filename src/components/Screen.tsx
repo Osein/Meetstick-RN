@@ -1,6 +1,6 @@
 import React from 'react';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {StyleSheet, ViewProps} from 'react-native';
+import {StyleSheet, View, ViewProps} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {palette} from '@/theme/colors';
 
 type Props = ViewProps & {
@@ -9,10 +9,25 @@ type Props = ViewProps & {
 };
 
 export const Screen: React.FC<Props> = ({style, background = palette.surface, children, ...rest}) => {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: background}, style]} {...rest}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: background,
+          paddingTop: insets.top,
+          paddingRight: insets.right,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left
+        },
+        style
+      ]}
+      {...rest}
+    >
       {children}
-    </SafeAreaView>
+    </View>
   );
 };
 

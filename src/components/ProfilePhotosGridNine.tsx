@@ -1,11 +1,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Alert, Image, Text, View} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import Sortable, {SortableGridRenderItem} from 'react-native-sortables';
 import {palette} from '@/theme/colors';
 import {PhotoSourcePickerSheet} from '@/components/PhotoSourcePickerSheet';
-
-type PickerSource = 'camera' | 'library';
+import {pickPhoto, PhotoPickerSource} from '@/services/media/photoPickerService';
 
 type PhotoCell = {
   id: string;
@@ -72,47 +70,19 @@ export const ProfilePhotosGridNine: React.FC<Props> = ({photos, onChangePhotos})
     });
   };
 
-  const openImagePicker = async (source: PickerSource) => {
+  const openImagePicker = async (source: PhotoPickerSource) => {
     if (activeCellIndex === null) return;
 
     const targetIndex = activeCellIndex;
 
     try {
-      if (source === 'library') {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('İzin gerekli', 'Fotoğraf seçebilmek için galeri izni vermen gerekiyor.');
-          return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 1
-        });
-
-        if (!result.canceled && result.assets.length > 0) {
-          setCellUri(targetIndex, result.assets[0].uri);
-        }
+      const result = await pickPhoto(source);
+      if (result.status === 'permission_denied') {
+        Alert.alert('İzin gerekli', result.message);
         return;
       }
-
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('İzin gerekli', 'Fotoğraf çekebilmek için kamera izni vermen gerekiyor.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1
-      });
-
-      if (!result.canceled && result.assets.length > 0) {
-        setCellUri(targetIndex, result.assets[0].uri);
+      if (result.status === 'success') {
+        setCellUri(targetIndex, result.uri);
       }
     } catch {
       Alert.alert('Hata', 'Fotoğraf seçilirken bir sorun oluştu. Lütfen tekrar dene.');

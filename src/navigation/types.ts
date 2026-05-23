@@ -31,7 +31,24 @@ export type RootStackParamList = {
   };
   WebView: {title: string; url?: string; htmlContent?: string};
   NewMeetingDetails: undefined;
-  NewMeetingLocation: undefined;
+  NewMeetingSelectInterest: undefined;
+  NewMeetingLocation:
+    | {
+        focusedPlace?: {
+          placeId?: string;
+          name: string;
+          address: string;
+          lat: number;
+          lng: number;
+        };
+      }
+    | undefined;
+  NewMeetingLocationSearch:
+    | {
+        lat?: number;
+        lng?: number;
+      }
+    | undefined;
   NewMeetingPhotos: undefined;
   EditProfilePhotos: undefined;
 };

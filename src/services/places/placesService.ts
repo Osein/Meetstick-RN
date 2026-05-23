@@ -1,4 +1,5 @@
 import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
+import {AxiosRequestConfig} from 'axios';
 
 export type PlaceSearchItem = {
   id: string;
@@ -81,21 +82,45 @@ const normalizePlace = (value: unknown): PlaceSearchItem | null => {
 
 export const searchPlaces = async ({
   query,
-  accessToken
+  accessToken,
+  lat,
+  lng,
+  limit = 8,
+  signal
 }: {
   query: string;
   accessToken?: string;
+  lat?: number;
+  lng?: number;
+  limit?: number;
+  signal?: AbortSignal;
 }): Promise<PlaceSearchItem[]> => {
   const headers: Record<string, string> = {'Content-Type': 'application/json'};
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
+  const params: Record<string, string | number> = {
+    q: query.trim(),
+    limit
+  };
+
+  if (typeof lat === 'number') {
+    params.lat = lat;
+  }
+
+  if (typeof lng === 'number') {
+    params.lng = lng;
+  }
+
   try {
-    const response = await networkClient.get('/v1/places/search', {
+    const config: AxiosRequestConfig = {
       headers,
-      params: {query: query.trim()}
-    });
+      params,
+      signal
+    };
+
+    const response = await networkClient.get('/v1/places/search', config);
 
     const data = response.data as {items?: unknown; data?: unknown} | unknown[];
     const rawItems = Array.isArray(data)

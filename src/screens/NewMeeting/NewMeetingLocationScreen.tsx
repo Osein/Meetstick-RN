@@ -1,18 +1,16 @@
-import React, {useMemo, useState} from 'react';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
-import {ActivityIndicator, Alert, FlatList, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import MapView, {MapPressEvent, Marker, Region} from 'react-native-maps';
 import {Ionicons} from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {AppHeader} from '@/components/AppHeader';
 import {PrimaryButton} from '@/components/Buttons';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
-import {PlaceSearchItem, searchPlaces} from '@/services/places/placesService';
-
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Props = NativeStackScreenProps<RootStackParamList, 'NewMeetingLocation'>;
 
 type SelectedLocation = {
   latitude: number;
@@ -28,8 +26,29 @@ const ISTANBUL_REGION: Region = {
   longitudeDelta: 0.08
 };
 
-export const NewMeetingLocationScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
+const USER_FOCUS_REGION_DELTA = {
+  latitudeDelta: 0.012,
+  longitudeDelta: 0.012
+};
+
+const formatReverseGeocodedAddress = (result?: Location.LocationGeocodedAddress | null) => {
+  if (!result) {
+    return '';
+  }
+
+  return [
+    result.name,
+    result.street,
+    result.district,
+    result.city,
+    result.region,
+    result.country
+  ]
+    .filter(value => typeof value === 'string' && value.trim().length > 0)
+    .join(', ');
+};
+
+export const NewMeetingLocationScreen: React.FC<Props> = ({navigation, route}) => {
   const {state, updateMeetingDraft} = useAppContext();
 
   const initialRegion = useMemo<Region>(() => {
@@ -48,10 +67,7 @@ export const NewMeetingLocationScreen: React.FC = () => {
     return ISTANBUL_REGION;
   }, [state.newMeetingDraft.latitude, state.newMeetingDraft.longitude]);
 
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [query, setQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [places, setPlaces] = useState<PlaceSearchItem[]>([]);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(
     state.newMeetingDraft.latitude && state.newMeetingDraft.longitude && state.newMeetingDraft.locationAddress
       ? {
@@ -64,49 +80,98 @@ export const NewMeetingLocationScreen: React.FC = () => {
   );
   const [region, setRegion] = useState<Region>(initialRegion);
 
-  const onMapPress = (event: MapPressEvent) => {
-    const {latitude, longitude} = event.nativeEvent.coordinate;
-    setSelectedLocation({
-      latitude,
-      longitude,
-      addressText: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
-    });
-  };
+  useEffect(() => {
+    let active = true;
 
-  const onSearch = async () => {
-    if (query.trim().length < 2) {
-      setPlaces([]);
+    const focusUserLocation = async () => {
+      try {
+        const existingPermission = await Location.getForegroundPermissionsAsync();
+        const permission =
+          existingPermission.status === 'granted'
+            ? existingPermission
+            : await Location.requestForegroundPermissionsAsync();
+
+        if (!active || permission.status !== 'granted') {
+          return;
+        }
+
+        const currentPosition = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+
+        if (!active) {
+          return;
+        }
+
+        setRegion({
+          latitude: currentPosition.coords.latitude,
+          longitude: currentPosition.coords.longitude,
+          ...USER_FOCUS_REGION_DELTA
+        });
+      } catch {
+        // Keep Istanbul fallback when device location is unavailable.
+      }
+    };
+
+    if (!selectedLocation) {
+      focusUserLocation();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    const focusedPlace = route.params?.focusedPlace;
+    if (!focusedPlace) {
       return;
     }
 
-    setIsSearching(true);
-    try {
-      const result = await searchPlaces({query, accessToken: state.user?.accessToken});
-      setPlaces(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Konum araması sırasında bir hata oluştu.';
-      Alert.alert('Konum Arama', message);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const onPlaceSelect = (item: PlaceSearchItem) => {
-    const nextRegion: Region = {
-      latitude: item.latitude,
-      longitude: item.longitude,
-      latitudeDelta: 0.02,
-      longitudeDelta: 0.02
-    };
-
-    setRegion(nextRegion);
-    setSelectedLocation({
-      latitude: item.latitude,
-      longitude: item.longitude,
-      addressText: item.fullAddress,
-      placeId: item.id
+    setRegion({
+      latitude: focusedPlace.lat,
+      longitude: focusedPlace.lng,
+      latitudeDelta: USER_FOCUS_REGION_DELTA.latitudeDelta,
+      longitudeDelta: USER_FOCUS_REGION_DELTA.longitudeDelta
     });
-    setPlaces([]);
+    setSelectedLocation({
+      latitude: focusedPlace.lat,
+      longitude: focusedPlace.lng,
+      addressText: focusedPlace.address,
+      placeId: focusedPlace.placeId
+    });
+
+    navigation.setParams({focusedPlace: undefined});
+  }, [navigation, route.params?.focusedPlace]);
+
+  const onMapPress = async (event: MapPressEvent) => {
+    const {latitude, longitude} = event.nativeEvent.coordinate;
+    setIsResolvingAddress(true);
+    setSelectedLocation({
+      latitude,
+      longitude,
+      addressText: ''
+    });
+
+    try {
+      const [result] = await Location.reverseGeocodeAsync({latitude, longitude});
+      const addressText = formatReverseGeocodedAddress(result);
+
+      setSelectedLocation({
+        latitude,
+        longitude,
+        addressText,
+      });
+    } catch {
+      setSelectedLocation({
+        latitude,
+        longitude,
+        addressText: ''
+      });
+      Alert.alert('Adres bulunamadı', 'Bu konum için adres bilgisi alınamadı. Lütfen başka bir nokta deneyin.');
+    } finally {
+      setIsResolvingAddress(false);
+    }
   };
 
   const applyLocation = () => {
@@ -125,86 +190,104 @@ export const NewMeetingLocationScreen: React.FC = () => {
   };
 
   return (
-    <Screen background="#fff">
+    <Screen background="#fff" style={styles.screen}>
       <AppHeader
         title="Konum seç"
         onBack={() => navigation.goBack()}
         rightElement={
-          <TouchableOpacity onPress={() => setIsSearchVisible(prev => !prev)} style={{padding: 4}}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('NewMeetingLocationSearch', {
+                lat: region.latitude,
+                lng: region.longitude
+              })
+            }
+            style={styles.searchButton}
+          >
             <Ionicons name="search" size={20} color={palette.textPrimary} />
           </TouchableOpacity>
         }
       />
 
-      {isSearchVisible ? (
-        <View style={{paddingHorizontal: 16, paddingTop: 12, gap: 10}}>
-          <View style={{flexDirection: 'row', gap: 8}}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Konum ara"
-              onSubmitEditing={onSearch}
-              style={{
-                flex: 1,
-                borderWidth: 1,
-                borderColor: palette.border,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 15
-              }}
-            />
-            <TouchableOpacity
-              onPress={onSearch}
-              style={{paddingHorizontal: 14, borderRadius: 10, backgroundColor: palette.primary, justifyContent: 'center'}}
-            >
-              {isSearching ? <ActivityIndicator color="#fff" /> : <Text style={{color: '#fff', fontWeight: '600'}}>Ara</Text>}
-            </TouchableOpacity>
-          </View>
-
-          {places.length > 0 ? (
-            <View style={{maxHeight: 180, borderWidth: 1, borderColor: palette.border, borderRadius: 10}}>
-              <FlatList
-                data={places}
-                keyExtractor={item => item.id}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({item}) => (
-                  <TouchableOpacity
-                    onPress={() => onPlaceSelect(item)}
-                    style={{paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: palette.border}}
-                  >
-                    <Text style={{fontWeight: '600', color: palette.textPrimary}}>{item.title}</Text>
-                    <Text style={{color: palette.textSecondary, marginTop: 2}} numberOfLines={2}>
-                      {item.fullAddress}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      <View style={{flex: 1, padding: 16, paddingTop: isSearchVisible ? 12 : 16}}>
-        <MapView style={{flex: 1, borderRadius: 14}} initialRegion={initialRegion} region={region} onRegionChangeComplete={setRegion} onPress={onMapPress}>
+      <View style={styles.mapWrap}>
+        <MapView
+          style={styles.map}
+          initialRegion={initialRegion}
+          region={region}
+          onRegionChangeComplete={setRegion}
+          onPress={onMapPress}
+          showsUserLocation
+          showsMyLocationButton
+        >
           {selectedLocation ? (
-            <Marker
-              coordinate={{latitude: selectedLocation.latitude, longitude: selectedLocation.longitude}}
-              title="Seçilen konum"
-              description={selectedLocation.addressText}
-            />
+            <Marker coordinate={{latitude: selectedLocation.latitude, longitude: selectedLocation.longitude}} />
           ) : null}
         </MapView>
-      </View>
 
-      {selectedLocation ? (
-        <View style={{padding: 16, borderTopWidth: 1, borderTopColor: palette.border, backgroundColor: '#fff'}}>
-          <Text style={{color: palette.textSecondary, marginBottom: 10}} numberOfLines={2}>
-            {selectedLocation.addressText}
-          </Text>
-          <PrimaryButton label="Seçtiğim konumu kullan" onPress={applyLocation} />
-        </View>
-      ) : null}
+        {selectedLocation ? (
+          <View style={styles.locationOverlay}>
+            {isResolvingAddress ? (
+              <View style={styles.locationLoadingRow}>
+                <ActivityIndicator color={palette.primary} />
+                <Text style={styles.locationLoadingText}>Adres bulunuyor...</Text>
+              </View>
+            ) : (
+              <Text style={styles.locationOverlayText} numberOfLines={2}>
+                {selectedLocation.addressText || 'Adres bulunamadı'}
+              </Text>
+            )}
+            <PrimaryButton
+              label="Seçtiğim konumu kullan"
+              onPress={applyLocation}
+              disabled={isResolvingAddress || !selectedLocation.addressText}
+              loading={isResolvingAddress}
+            />
+          </View>
+        ) : null}
+      </View>
     </Screen>
   );
 };
+
+const styles = StyleSheet.create({
+  screen: {
+    paddingBottom: 0
+  },
+  searchButton: {
+    padding: 4
+  },
+  mapWrap: {
+    flex: 1,
+    position: 'relative'
+  },
+  map: {
+    flex: 1
+  },
+  locationOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 12,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 6
+  },
+  locationOverlayText: {
+    color: palette.textSecondary,
+    marginBottom: 10
+  },
+  locationLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10
+  },
+  locationLoadingText: {
+    color: palette.textSecondary
+  }
+});

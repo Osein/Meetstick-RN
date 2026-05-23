@@ -113,6 +113,7 @@ export type NewMeetingDraft = {
   title: string;
   participantCount: string;
   description: string;
+  interests: Interest[];
   isFutureEvent: boolean;
   isAllDayEvent?: boolean;
   eventDateTime?: string;
