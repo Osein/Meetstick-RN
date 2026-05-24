@@ -25,7 +25,9 @@ import {Screen} from '@/components/Screen';
 import {TimePickerBottomSheet} from '@/components/TimePickerBottomSheet';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
+import {createEvent} from '@/services/events/eventsService';
 import {pickPhoto} from '@/services/media/photoPickerService';
+import {bumpRefreshKey} from '@/services/refresh/refreshStore';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -38,7 +40,7 @@ const getDefaultStartDate = (): Date => {
 
 export const NewMeetingDetailsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const {state, updateMeetingDraft} = useAppContext();
+  const {state, updateMeetingDraft, resetMeetingDraft} = useAppContext();
   const {t, i18n} = useTranslation();
   const participantCountInputRef = useRef<TextInput>(null);
   const selectedInterests = state.newMeetingDraft.interests || [];
@@ -50,12 +52,13 @@ export const NewMeetingDetailsScreen: React.FC = () => {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
   const [draftEventDate, setDraftEventDate] = useState<Date>(eventDateTime ? new Date(eventDateTime) : getDefaultStartDate());
-  const [isAutoCreateChat, setIsAutoCreateChat] = useState(true);
+  const [isAutoCreateChat, setIsAutoCreateChat] = useState(state.newMeetingDraft.createChatRoom !== false);
   const [isAutoApproveParticipants, setIsAutoApproveParticipants] = useState(
     state.newMeetingDraft.autoApproveParticipants === true
   );
   const [isCoverPickerVisible, setIsCoverPickerVisible] = useState(false);
   const [coverPhoto, setCoverPhoto] = useState<string | undefined>(state.newMeetingDraft.photos?.[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const locationAddress = state.newMeetingDraft.locationAddress || '';
 
@@ -67,10 +70,14 @@ export const NewMeetingDetailsScreen: React.FC = () => {
       Number.isFinite(peopleCount) &&
       peopleCount > 0 &&
       description.trim().length > 5 &&
+      !!eventDateTime &&
+      !!coverPhoto &&
       locationAddress.trim().length > 3 &&
+      typeof state.newMeetingDraft.latitude === 'number' &&
+      typeof state.newMeetingDraft.longitude === 'number' &&
       selectedInterests.length > 0
     );
-  }, [title, participantCount, description, locationAddress, selectedInterests.length]);
+  }, [title, participantCount, description, eventDateTime, coverPhoto, locationAddress, selectedInterests.length, state.newMeetingDraft.latitude, state.newMeetingDraft.longitude]);
 
   const persistDraft = () => {
     updateMeetingDraft({
@@ -79,6 +86,7 @@ export const NewMeetingDetailsScreen: React.FC = () => {
       description,
       interests: selectedInterests,
       autoApproveParticipants: isAutoApproveParticipants,
+      createChatRoom: isAutoCreateChat,
       isFutureEvent: true,
       isAllDayEvent: false,
       startDateTime: eventDateTime,
@@ -211,9 +219,44 @@ export const NewMeetingDetailsScreen: React.FC = () => {
     });
   };
 
-  const onNext = () => {
+  const onNext = async () => {
+    const participantCountNumber = Number(participantCount);
+    if (!canContinue || !Number.isFinite(participantCountNumber) || participantCountNumber <= 0) {
+      return;
+    }
+
     persistDraft();
-    navigation.navigate('NewMeetingPhotos');
+    setIsSubmitting(true);
+
+    try {
+      await createEvent({
+        accessToken: state.user?.accessToken,
+        payload: {
+          title: title.trim(),
+          description: description.trim(),
+          addressText: locationAddress.trim(),
+          lat: state.newMeetingDraft.latitude!,
+          lng: state.newMeetingDraft.longitude!,
+          maxCapacity: participantCountNumber,
+          joinMode: isAutoApproveParticipants ? 'auto' : 'approval',
+          date: eventDateTime!,
+          createChatRoom: isAutoCreateChat,
+          interestIds: selectedInterests.map(item => item.id),
+          photos: coverPhoto ? [coverPhoto] : []
+        }
+      });
+
+      resetMeetingDraft();
+      bumpRefreshKey('home');
+      bumpRefreshKey('profile');
+      Alert.alert('Oluşturuldu', 'Etkinlik başarıyla oluşturuldu.');
+      navigation.navigate('MainTabs');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Etkinlik oluşturulamadı.';
+      Alert.alert('Hata', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formattedDateTime = useMemo(() => {
@@ -396,8 +439,8 @@ export const NewMeetingDetailsScreen: React.FC = () => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={onNext}
-              disabled={!canContinue}
-              style={[styles.primaryButton, !canContinue && styles.primaryButtonDisabled]}
+              disabled={!canContinue || isSubmitting}
+              style={[styles.primaryButton, (!canContinue || isSubmitting) && styles.primaryButtonDisabled]}
             >
               <Ionicons name="add" size={17} color="#fff" />
               <Text style={styles.primaryButtonText}>{t('newMeeting.create.cta')}</Text>

@@ -17,7 +17,7 @@ export type HomeEvent = {
   title: string;
   coverPhoto?: string;
   startsAt?: string;
-  acceptedCount?: number;
+  personCount?: number;
   distanceKm?: number;
   host?: HomeHost;
   location?: HomeLocation;
@@ -29,6 +29,7 @@ export type HomeInterestGroup = {
     name: string;
   };
   events: HomeEvent[];
+  showSeeAll: boolean;
 };
 
 export type HomeFeed = {
@@ -47,6 +48,7 @@ const normalizeEvent = (item: unknown): HomeEvent | null => {
     title?: unknown;
     coverPhoto?: unknown;
     startsAt?: unknown;
+    personCount?: unknown;
     acceptedCount?: unknown;
     distanceKm?: unknown;
     host?: unknown;
@@ -68,7 +70,12 @@ const normalizeEvent = (item: unknown): HomeEvent | null => {
     title: title.trim(),
     coverPhoto: typeof raw.coverPhoto === 'string' ? raw.coverPhoto : undefined,
     startsAt: typeof raw.startsAt === 'string' ? raw.startsAt : undefined,
-    acceptedCount: typeof raw.acceptedCount === 'number' ? raw.acceptedCount : undefined,
+    personCount:
+      typeof raw.personCount === 'number'
+        ? raw.personCount
+        : typeof raw.acceptedCount === 'number'
+          ? raw.acceptedCount
+          : undefined,
     distanceKm: typeof raw.distanceKm === 'number' ? raw.distanceKm : undefined,
     host: hostRaw,
     location: locationRaw
@@ -86,7 +93,7 @@ const normalizeGroups = (value: unknown): HomeInterestGroup[] => {
         return null;
       }
 
-      const raw = item as {interest?: unknown; events?: unknown};
+      const raw = item as {interest?: unknown; events?: unknown; showSeeAll?: unknown};
       if (!raw.interest || typeof raw.interest !== 'object') {
         return null;
       }
@@ -115,7 +122,8 @@ const normalizeGroups = (value: unknown): HomeInterestGroup[] => {
 
       return {
         interest: {id, name: name.trim()},
-        events
+        events,
+        showSeeAll: raw.showSeeAll === true
       };
     })
     .filter((item): item is HomeInterestGroup => item !== null);

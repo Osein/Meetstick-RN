@@ -49,7 +49,6 @@ export type RootStackParamList = {
         lng?: number;
       }
     | undefined;
-  NewMeetingPhotos: undefined;
   EditProfilePhotos: undefined;
 };
 

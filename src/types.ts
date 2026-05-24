@@ -115,6 +115,7 @@ export type NewMeetingDraft = {
   description: string;
   interests: Interest[];
   autoApproveParticipants?: boolean;
+  createChatRoom?: boolean;
   isFutureEvent: boolean;
   isAllDayEvent?: boolean;
   eventDateTime?: string;

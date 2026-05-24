@@ -29,7 +29,6 @@ import {NewMeetingDetailsScreen} from '@/screens/NewMeeting/NewMeetingDetailsScr
 import {NewMeetingSelectInterestScreen} from '@/screens/NewMeeting/NewMeetingSelectInterestScreen';
 import {NewMeetingLocationScreen} from '@/screens/NewMeeting/NewMeetingLocationScreen';
 import {NewMeetingLocationSearchScreen} from '@/screens/NewMeeting/NewMeetingLocationSearchScreen';
-import {NewMeetingPhotosScreen} from '@/screens/NewMeeting/NewMeetingPhotosScreen';
 import {useAppContext} from '@/context/AppContext';
 import {resetSessionExpired, subscribeSessionExpired} from '@/services/auth/authSessionService';
 
@@ -93,7 +92,6 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="NewMeetingSelectInterest" component={NewMeetingSelectInterestScreen} />
         <Stack.Screen name="NewMeetingLocation" component={NewMeetingLocationScreen} />
         <Stack.Screen name="NewMeetingLocationSearch" component={NewMeetingLocationSearchScreen} />
-        <Stack.Screen name="NewMeetingPhotos" component={NewMeetingPhotosScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

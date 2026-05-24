@@ -18,6 +18,7 @@ import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
+import {EmptyStateCreateEvent} from '@/components/EmptyStateCreateEvent';
 import {Screen} from '@/components/Screen';
 import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
@@ -49,7 +50,17 @@ export const DashboardScreen: React.FC = () => {
 
   const featuredEvents = useMemo(() => homeFeed.featuredEvents.slice(0, 4), [homeFeed.featuredEvents]);
   const upcomingEvents = useMemo(() => homeFeed.upcomingEvents.slice(0, 2), [homeFeed.upcomingEvents]);
-  const groupedEvents = useMemo(() => homeFeed.groupedEvents, [homeFeed.groupedEvents]);
+  const groupedEvents = useMemo(
+    () => homeFeed.groupedEvents.filter(group => Array.isArray(group.events) && group.events.length > 0),
+    [homeFeed.groupedEvents]
+  );
+  const hasAnyEvents = useMemo(
+    () =>
+      featuredEvents.length > 0 ||
+      upcomingEvents.length > 0 ||
+      groupedEvents.some(group => group.events.length > 0),
+    [featuredEvents, upcomingEvents, groupedEvents]
+  );
 
   const refreshLocationPermission = useCallback(async () => {
     try {
@@ -191,7 +202,7 @@ export const DashboardScreen: React.FC = () => {
     return (
       <View style={styles.activitySection}>
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionRowTitle}>{title}</Text>
           {showAll ? <Text style={styles.sectionAction}>Tümünü Gör</Text> : null}
         </View>
         {items.map(item => (
@@ -206,14 +217,18 @@ export const DashboardScreen: React.FC = () => {
               <Text style={styles.activityTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              <View style={styles.posterRow}>
-                <Image source={{uri: item.host?.avatar || undefined}} style={styles.posterAvatar} />
-                <Text style={styles.posterName}>{item.host?.name || 'Meetstick'}</Text>
-              </View>
-              <Text style={styles.activityMeta}>
-                {(item.location?.addressText || 'Konum bilgisi yok') +
-                  ` · ${typeof item.acceptedCount === 'number' ? item.acceptedCount : 0} kişi`}
-              </Text>
+              {typeof item.personCount === 'number' || item.host?.name || item.host?.avatar ? (
+                <View style={styles.posterRow}>
+                  {typeof item.personCount === 'number' ? <Text style={styles.personCount}>{item.personCount} kişi</Text> : null}
+                  {item.host?.avatar ? <Image source={{uri: item.host.avatar}} style={styles.posterAvatar} /> : null}
+                  {item.host?.name ? <Text style={styles.posterName}>{item.host.name}</Text> : null}
+                </View>
+              ) : null}
+              {item.location?.addressText ? (
+                <Text style={styles.activityMeta} numberOfLines={2}>
+                  {item.location.addressText}
+                </Text>
+              ) : null}
             </View>
           </TouchableOpacity>
         ))}
@@ -239,49 +254,74 @@ export const DashboardScreen: React.FC = () => {
             <View style={{paddingTop: 36}}>
               <ActivityIndicator color={palette.primary} />
             </View>
-          ) : null}
+          ) : !hasAnyEvents ? (
+            <EmptyStateCreateEvent
+              title="Yakınınızda Etkinlik Bulamadık"
+              description="İlk etkinliği oluşturarak çevrende yeni insanları bir araya getirebilirsin."
+              buttonLabel="ETKİNLİK OLUŞTUR"
+              onPress={() => navigation.navigate('NewMeetingDetails')}
+            />
+          ) : (
+            <>
+              {featuredEvents.length > 0 ? (
+                <View>
+                  <Text style={styles.sectionTitle}>Öne çıkan etkinlikler</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                    {featuredEvents.map(item => (
+                      <TouchableOpacity
+                        key={`featured-${item.id}`}
+                        activeOpacity={1}
+                        style={styles.featuredCard}
+                        onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
+                      >
+                        <Image source={{uri: item.coverPhoto}} style={styles.featuredImage} />
+                        <Text style={styles.cardTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        {item.location?.addressText ? (
+                          <Text style={styles.cardDate} numberOfLines={2}>
+                            {item.location.addressText}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
 
-          <View>
-            <Text style={styles.sectionTitle}>Öne çıkan etkinlikler</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-              {featuredEvents.map(item => (
-                <TouchableOpacity
-                  key={`featured-${item.id}`}
-                  activeOpacity={1}
-                  style={styles.featuredCard}
-                  onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
-                >
-                  <Image source={{uri: item.coverPhoto}} style={styles.featuredImage} />
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.cardDate}>{item.location?.addressText || '-'}</Text>
-                </TouchableOpacity>
+              {upcomingEvents.length > 0 ? (
+                <View>
+                  <Text style={styles.sectionTitle}>Gelecek etkinlikler</Text>
+                  <View style={styles.upcomingRow}>
+                    {upcomingEvents.map(item => (
+                      <TouchableOpacity
+                        key={`upcoming-${item.id}`}
+                        activeOpacity={1}
+                        style={styles.upcomingCard}
+                        onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
+                      >
+                        <Image source={{uri: item.coverPhoto}} style={styles.upcomingImage} />
+                        <Text style={styles.cardTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        {item.location?.addressText ? (
+                          <Text style={styles.cardDate} numberOfLines={2}>
+                            {item.location.addressText}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {groupedEvents.map(group => (
+                <React.Fragment key={`group-${String(group.interest.id)}-${group.interest.name}`}>
+                  {renderActivitySection(group.interest.name, group.events, group.showSeeAll)}
+                </React.Fragment>
               ))}
-            </ScrollView>
-          </View>
-
-          <View>
-            <Text style={styles.sectionTitle}>Gelecek etkinlikler</Text>
-            <View style={styles.upcomingRow}>
-              {upcomingEvents.map(item => (
-                <TouchableOpacity
-                  key={`upcoming-${item.id}`}
-                  activeOpacity={1}
-                  style={styles.upcomingCard}
-                  onPress={() => navigation.navigate('EventDetail', {eventId: item.id})}
-                >
-                  <Image source={{uri: item.coverPhoto}} style={styles.upcomingImage} />
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.cardDate}>{item.location?.addressText || '-'}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {groupedEvents.map(group => renderActivitySection(group.interest.name, group.events))}
+            </>
+          )}
         </ScrollView>
       )}
     </Screen>
@@ -308,6 +348,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: palette.textPrimary,
     marginBottom: 12
+  },
+  sectionRowTitle: {
+    fontSize: 40 / 2,
+    fontWeight: '700',
+    color: palette.textPrimary
   },
   horizontalList: {
     gap: 14,
@@ -348,7 +393,7 @@ const styles = StyleSheet.create({
   },
   sectionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginBottom: 12
   },
@@ -385,6 +430,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
+  },
+  personCount: {
+    fontSize: 16,
+    color: '#4F4F4F',
+    marginRight: 2
   },
   posterAvatar: {
     width: 24,

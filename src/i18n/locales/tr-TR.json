@@ -41,5 +41,20 @@
   "newMeeting.interests.headline": "En az 1 kategori seç",
   "newMeeting.interests.description": "Etkinliğini en iyi anlatan bir veya birden fazla kategori seç.",
   "newMeeting.interests.loading": "Kategoriler yükleniyor...",
-  "newMeeting.interests.selectCta": "Seç"
+  "newMeeting.interests.selectCta": "Seç",
+  "eventDetail.loading": "Yükleniyor...",
+  "eventDetail.tags.popular": "POPÜLER",
+  "eventDetail.location.address": "4730 Crystal Springs Dr",
+  "eventDetail.location.mapCta": "HARİTA",
+  "eventDetail.about.title": "ETKİNLİK HAKKINDA",
+  "eventDetail.participants.title": "KATILIMCILAR",
+  "eventDetail.participants.seeAll": "TÜMÜ",
+  "eventDetail.participants.more": "Daha Fazla",
+  "eventDetail.participants.hostName": "{{name}}",
+  "eventDetail.price.label": "FİYAT",
+  "eventDetail.price.value": "Ücretsiz",
+  "eventDetail.cta.join": "Etkinliğe Katıl",
+  "eventDetail.cta.requested": "Talep Gönderildi",
+  "eventDetail.cta.cancelRequest": "Talebi iptal et",
+  "eventDetail.cta.joined": "Katıldın"
 }

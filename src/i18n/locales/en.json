@@ -41,5 +41,20 @@
   "newMeeting.interests.headline": "Choose at least 1 category",
   "newMeeting.interests.description": "Choose one or more categories that best describe your event.",
   "newMeeting.interests.loading": "Loading categories...",
-  "newMeeting.interests.selectCta": "Select"
+  "newMeeting.interests.selectCta": "Select",
+  "eventDetail.loading": "Loading...",
+  "eventDetail.tags.popular": "POPULAR",
+  "eventDetail.location.address": "4730 Crystal Springs Dr",
+  "eventDetail.location.mapCta": "MAP",
+  "eventDetail.about.title": "ABOUT EVENT",
+  "eventDetail.participants.title": "PARTICIPANTS",
+  "eventDetail.participants.seeAll": "SEE ALL",
+  "eventDetail.participants.more": "More",
+  "eventDetail.participants.hostName": "{{name}}",
+  "eventDetail.price.label": "PRICE",
+  "eventDetail.price.value": "Free",
+  "eventDetail.cta.join": "Join Event",
+  "eventDetail.cta.requested": "Request Sent",
+  "eventDetail.cta.cancelRequest": "Cancel request",
+  "eventDetail.cta.joined": "Joined"
 }
