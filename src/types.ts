@@ -1,6 +1,7 @@
 export type Interest = {
   id: string | number;
   title: string;
+  isFavorite?: boolean;
 };
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';

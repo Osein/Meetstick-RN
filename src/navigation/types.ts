@@ -13,6 +13,7 @@ export type RootStackParamList = {
   RegisterPhotos: {registrationToken: string};
   MainTabs: undefined;
   EventList: {categoryId: number; categoryTitle: string};
+  InterestMeetings: {interestId: string | number; title: string};
   EventDetail: {eventId: string};
   PersonDetail: {personId: string};
   LocationSettings: undefined;
@@ -54,7 +55,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   DashboardTab: undefined;
-  CategoriesTab: undefined;
+  DiscoverTab: undefined;
   NewMeetingTab: undefined;
   MessagesTab: undefined;
   ProfileTab: undefined;

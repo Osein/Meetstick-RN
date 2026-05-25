@@ -5,6 +5,7 @@ import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Screen} from '@/components/Screen';
+import {AppHeader} from '@/components/AppHeader';
 import {EmptyStateCreateEvent} from '@/components/EmptyStateCreateEvent';
 import {RootStackParamList} from '@/navigation/types';
 import {useAppContext} from '@/context/AppContext';
@@ -166,13 +167,14 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <Screen background="#FFFFFF">
-      <View style={styles.header}>
-        <View style={styles.headerSide} />
-        <Text style={styles.headerTitle}>{user?.name || 'Meetstick Üyesi'}</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Settings')}>
-          <Ionicons name="settings-outline" size={20} color="#A8A29E" />
-        </TouchableOpacity>
-      </View>
+      <AppHeader
+        title={user?.name || 'Meetstick Üyesi'}
+        rightElement={
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Settings')}>
+            <Ionicons name="settings-outline" size={20} color="#A8A29E" />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -254,31 +256,9 @@ export const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 14
-  },
-  headerSide: {
-    width: 40,
-    height: 40
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A'
-  },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center'
   },

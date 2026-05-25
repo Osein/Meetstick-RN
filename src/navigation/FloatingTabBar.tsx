@@ -71,7 +71,7 @@ const getLabel = (routeName: string) => {
   switch (routeName) {
     case 'DashboardTab':
       return 'Anasayfa';
-    case 'CategoriesTab':
+    case 'DiscoverTab':
       return 'Bul';
     case 'MessagesTab':
       return 'Mesajlar';
@@ -86,7 +86,7 @@ const getIcon = (routeName: string, isFocused: boolean): keyof typeof Ionicons.g
   switch (routeName) {
     case 'DashboardTab':
       return isFocused ? 'home' : 'home-outline';
-    case 'CategoriesTab':
+    case 'DiscoverTab':
       return 'search-outline';
     case 'MessagesTab':
       return isFocused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';

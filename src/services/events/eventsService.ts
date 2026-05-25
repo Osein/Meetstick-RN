@@ -7,6 +7,20 @@ type EventDetailUser = {
   avatar?: string;
 };
 
+export type EventListItem = {
+  id: string;
+  title: string;
+  coverPhoto?: string;
+  startsAt?: string;
+  personCount?: number;
+  host?: EventDetailUser;
+  location?: {
+    addressText?: string;
+    lat?: number;
+    lng?: number;
+  };
+};
+
 export type EventDetailData = {
   id: string;
   title: string;
@@ -19,6 +33,7 @@ export type EventDetailData = {
   longitude?: number;
   acceptedCount?: number;
   isHost: boolean;
+  hasActiveJoinRequest: boolean;
   myJoinStatus?: 'pending' | 'accepted' | 'rejected' | 'cancelled' | null;
   joinMode?: 'approval' | 'auto';
   host?: EventDetailUser;
@@ -26,6 +41,16 @@ export type EventDetailData = {
   acceptedParticipantsCount: number;
   applicants: EventDetailUser[];
   applicantsCount: number;
+};
+
+export type EventListResponse = {
+  items: EventListItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export type CreateEventPayload = {
@@ -40,6 +65,58 @@ export type CreateEventPayload = {
   createChatRoom: boolean;
   interestIds: Array<string | number>;
   photos: string[];
+};
+
+const normalizeEventListItem = (value: unknown): EventListItem | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as {
+    id?: unknown;
+    title?: unknown;
+    coverPhoto?: unknown;
+    coverPhotos?: Array<{url?: unknown}> | unknown;
+    startsAt?: unknown;
+    maxCapacity?: unknown;
+    acceptedCount?: unknown;
+    personCount?: unknown;
+    host?: unknown;
+    location?: unknown;
+  };
+
+  const id = typeof raw.id === 'string' ? raw.id : raw.id != null ? String(raw.id) : '';
+  const title = typeof raw.title === 'string' ? raw.title.trim() : raw.title != null ? String(raw.title).trim() : '';
+
+  if (!id || !title) {
+    return null;
+  }
+
+  const coverPhotoFromArray =
+    Array.isArray(raw.coverPhotos) && typeof raw.coverPhotos[0]?.url === 'string' ? raw.coverPhotos[0].url : undefined;
+
+  const hostRaw = raw.host && typeof raw.host === 'object' ? (raw.host as EventDetailUser) : undefined;
+  const locationRaw =
+    raw.location && typeof raw.location === 'object'
+      ? (raw.location as {addressText?: string; lat?: number; lng?: number})
+      : undefined;
+
+  return {
+    id,
+    title,
+    coverPhoto: typeof raw.coverPhoto === 'string' ? raw.coverPhoto : coverPhotoFromArray,
+    startsAt: typeof raw.startsAt === 'string' ? raw.startsAt : undefined,
+    personCount:
+      typeof raw.personCount === 'number'
+        ? raw.personCount
+        : typeof raw.maxCapacity === 'number'
+          ? raw.maxCapacity
+        : typeof raw.acceptedCount === 'number'
+          ? raw.acceptedCount
+          : undefined,
+    host: hostRaw,
+    location: locationRaw
+  };
 };
 
 const inferMimeType = (uri: string): string => {
@@ -113,6 +190,7 @@ export const getEventById = async ({
       startsAt?: unknown;
       endsAt?: unknown;
       isHost?: unknown;
+      hasActiveJoinRequest?: unknown;
       myJoinStatus?: unknown;
       joinMode?: unknown;
       host?: unknown;
@@ -194,6 +272,7 @@ export const getEventById = async ({
       longitude: typeof data.location?.lng === 'number' ? data.location.lng : undefined,
       acceptedCount: typeof data.acceptedCount === 'number' ? data.acceptedCount : acceptedParticipants.length,
       isHost: data.isHost === true,
+      hasActiveJoinRequest: data.hasActiveJoinRequest === true,
       myJoinStatus:
         data.myJoinStatus === 'pending' ||
         data.myJoinStatus === 'accepted' ||
@@ -240,6 +319,126 @@ export const cancelJoinEvent = async ({id, accessToken}: {id: string; accessToke
     await networkClient.post(`/v1/events/${encodeURIComponent(id)}/join/cancel`, undefined, {headers});
   } catch (error) {
     throw new Error(getServiceErrorMessage(error, 'Katılım isteği iptal edilemedi.'));
+  }
+};
+
+export const deleteEvent = async ({id, accessToken}: {id: string; accessToken?: string}): Promise<void> => {
+  const headers: Record<string, string> = {'Content-Type': 'application/json'};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  try {
+    await networkClient.delete(`/v1/events/${encodeURIComponent(id)}`, {headers});
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Etkinlik silinemedi.'));
+  }
+};
+
+export const getEvents = async ({
+  accessToken,
+  query,
+  interestId,
+  lat,
+  lng
+}: {
+  accessToken?: string;
+  query?: string;
+  interestId?: string | number;
+  lat?: number;
+  lng?: number;
+}): Promise<EventListItem[]> => {
+  const response = await getEventsPage({
+    accessToken,
+    query,
+    interestId,
+    lat,
+    lng
+  });
+
+  return response.items;
+};
+
+export const getEventsPage = async ({
+  accessToken,
+  query,
+  interestId,
+  lat,
+  lng,
+  page = 1,
+  limit = 20
+}: {
+  accessToken?: string;
+  query?: string;
+  interestId?: string | number;
+  lat?: number;
+  lng?: number;
+  page?: number;
+  limit?: number;
+}): Promise<EventListResponse> => {
+  const headers: Record<string, string> = {'Content-Type': 'application/json'};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  // Rule: query-based search sends only query (+ optional pagination).
+  // Nearby discovery sends lat/lng and must not rely on query.
+  const hasQuery = Boolean(query && query.trim().length > 0);
+  if (!hasQuery && (typeof lat !== 'number' || typeof lng !== 'number')) {
+    throw new Error('Konum bilgisi bekleniyor.');
+  }
+
+  const params: Record<string, string | number> = {page, limit};
+  const resolvedLat = lat;
+  const resolvedLng = lng;
+
+  if (hasQuery) {
+    params.query = query!.trim();
+  } else {
+    params.lat = resolvedLat as number;
+    params.lng = resolvedLng as number;
+  }
+
+  if (interestId != null && String(interestId).trim().length > 0) {
+    params.interestId = String(interestId);
+  }
+
+  try {
+    const response = await networkClient.get('/v1/events', {headers, params});
+    const payload = response.data as
+      | unknown[]
+      | {
+          items?: unknown[];
+          data?: unknown[];
+          pagination?: {
+            page?: unknown;
+            limit?: unknown;
+            total?: unknown;
+            totalPages?: unknown;
+          };
+        };
+
+    const items = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === 'object' && Array.isArray((payload as {items?: unknown[]}).items)
+        ? (payload as {items: unknown[]}).items
+        : payload && typeof payload === 'object' && Array.isArray((payload as {data?: unknown[]}).data)
+          ? (payload as {data: unknown[]}).data
+          : [];
+
+    const normalizedItems = items.map(normalizeEventListItem).filter((item): item is EventListItem => item !== null);
+    const payloadPagination =
+      payload && !Array.isArray(payload) && typeof payload === 'object' ? payload.pagination : undefined;
+    const pagination = {
+      page: typeof payloadPagination?.page === 'number' ? payloadPagination.page : page,
+      limit: typeof payloadPagination?.limit === 'number' ? payloadPagination.limit : limit,
+      total: typeof payloadPagination?.total === 'number' ? payloadPagination.total : normalizedItems.length,
+      totalPages: typeof payloadPagination?.totalPages === 'number' ? payloadPagination.totalPages : 1
+    };
+
+    return {items: normalizedItems, pagination};
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Etkinlikler alınamadı.'));
   }
 };
 

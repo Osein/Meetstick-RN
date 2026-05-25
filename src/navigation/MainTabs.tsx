@@ -3,7 +3,7 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Ionicons} from '@expo/vector-icons';
 import {MainTabParamList} from '@/navigation/types';
 import {DashboardScreen} from '@/screens/Dashboard/DashboardScreen';
-import {CategoriesScreen} from '@/screens/Categories/CategoriesScreen';
+import {DiscoverScreen} from '@/screens/Discover/DiscoverScreen';
 import {MessagesScreen} from '@/screens/Messages/MessagesScreen';
 import {ProfileScreen} from '@/screens/Profile/ProfileScreen';
 import {palette} from '@/theme/colors';
@@ -39,8 +39,8 @@ export const MainTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="CategoriesTab"
-        component={CategoriesScreen}
+        name="DiscoverTab"
+        component={DiscoverScreen}
         options={{
           tabBarLabel: 'Kategoriler',
           tabBarIcon: ({color, size}) => <Ionicons name="search" color={color} size={size} />

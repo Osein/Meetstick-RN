@@ -2,12 +2,19 @@ import axios, {AxiosError} from 'axios';
 import {API_BASE_URL} from '@/services/api/apiConfig';
 import {MeetstickSecureKeyValueStorage} from '@/services/storage/MeetstickSecureKeyValueStorage';
 import {markSessionExpired} from '@/services/auth/authSessionService';
+import {mapAuthResponseToVerifyOtpResponse} from '@/services/auth/authProfileMappers';
 
 type ServiceErrorResponse = {
   messageId?: string;
   userDescription?: string;
   subErrors?: unknown;
   message?: string;
+};
+
+type RequestConfigWithMeta = {
+  _abortController?: AbortController;
+  _retry?: boolean;
+  _skipAuth?: boolean;
 };
 
 export const networkClient = axios.create({
@@ -20,6 +27,7 @@ export const networkClient = axios.create({
 
 const secureStorage = new MeetstickSecureKeyValueStorage();
 const inFlightControllers = new Set<AbortController>();
+let refreshPromise: Promise<string | null> | null = null;
 
 const logNetwork = (scope: 'request' | 'response' | 'error', payload: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
@@ -40,6 +48,70 @@ const getLocalAccessToken = async (): Promise<string | undefined> => {
   return token && token.length > 0 ? token : undefined;
 };
 
+const getLocalRefreshToken = async (): Promise<string | undefined> => {
+  const profile = await secureStorage.getUserProfile();
+  const token = profile?.refreshToken?.trim();
+  return token && token.length > 0 ? token : undefined;
+};
+
+const applyAuthorizationHeader = (config: {headers?: unknown}, token: string) => {
+  const headersAny = config.headers as
+    | {Authorization?: string; authorization?: string; set?: (name: string, value: string) => void}
+    | undefined;
+
+  if (headersAny?.set) {
+    headersAny.set('Authorization', `Bearer ${token}`);
+    return;
+  }
+
+  const fallbackHeaders = (config.headers || {}) as Record<string, string>;
+  fallbackHeaders.Authorization = `Bearer ${token}`;
+  config.headers = fallbackHeaders;
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const refreshToken = await getLocalRefreshToken();
+    if (!refreshToken) {
+      return null;
+    }
+
+    const response = await axios.post(
+      `${API_BASE_URL}/v1/auth/refresh-token`,
+      {refreshToken},
+      {
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const normalized = mapAuthResponseToVerifyOtpResponse(response.data as Record<string, unknown>);
+    if (!normalized.accessToken || !normalized.refreshToken) {
+      return null;
+    }
+
+    const currentProfile = await secureStorage.getUserProfile();
+    await secureStorage.saveUserProfile({
+      ...(currentProfile || {}),
+      ...normalized
+    });
+
+    return normalized.accessToken;
+  })()
+    .catch(() => null)
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
 export const cancelAllInFlightRequests = () => {
   inFlightControllers.forEach(controller => controller.abort('SESSION_EXPIRED'));
   inFlightControllers.clear();
@@ -48,24 +120,14 @@ export const cancelAllInFlightRequests = () => {
 networkClient.interceptors.request.use(async config => {
   const controller = new AbortController();
   config.signal = controller.signal;
-  (config as typeof config & {_abortController?: AbortController})._abortController = controller;
+  (config as typeof config & RequestConfigWithMeta)._abortController = controller;
   inFlightControllers.add(controller);
 
-  const headersAny = config.headers as
-    | {Authorization?: string; authorization?: string; set?: (name: string, value: string) => void}
-    | undefined;
-  const hasAuthorization = Boolean(headersAny?.Authorization || headersAny?.authorization);
-
-  if (!hasAuthorization) {
+  const configWithMeta = config as typeof config & RequestConfigWithMeta;
+  if (!configWithMeta._skipAuth) {
     const token = await getLocalAccessToken();
     if (token) {
-      if (headersAny?.set) {
-        headersAny.set('Authorization', `Bearer ${token}`);
-      } else {
-        const fallbackHeaders = (config.headers || {}) as Record<string, string>;
-        fallbackHeaders.Authorization = `Bearer ${token}`;
-        config.headers = fallbackHeaders as typeof config.headers;
-      }
+      applyAuthorizationHeader(config, token);
     }
   }
 
@@ -99,9 +161,9 @@ networkClient.interceptors.response.use(
 
     return response;
   },
-  error => {
+  async error => {
     const axiosError = error as AxiosError;
-    const errorConfig = axiosError.config as (typeof axiosError.config & {_abortController?: AbortController}) | undefined;
+    const errorConfig = axiosError.config as (typeof axiosError.config & RequestConfigWithMeta) | undefined;
     if (errorConfig?._abortController) {
       inFlightControllers.delete(errorConfig._abortController);
     }
@@ -113,6 +175,17 @@ networkClient.interceptors.response.use(
       data: axiosError.response?.data,
       message: axiosError.message
     });
+
+    const isRefreshEndpoint = typeof axiosError.config?.url === 'string' && axiosError.config.url.includes('/v1/auth/refresh-token');
+
+    if (axiosError.response?.status === 401 && errorConfig && !errorConfig._retry && !isRefreshEndpoint) {
+      errorConfig._retry = true;
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) {
+        applyAuthorizationHeader(errorConfig, refreshedToken);
+        return networkClient.request(errorConfig);
+      }
+    }
 
     if (axiosError.response?.status === 401) {
       cancelAllInFlightRequests();

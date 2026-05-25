@@ -1,6 +1,7 @@
 import {Gender, Interest} from '@/types';
 import {getServiceErrorMessage, networkClient} from '@/services/network/networkClient';
 import {optimizeImagesUnder1MB} from '@/services/media/imageOptimizationService';
+import {mapAuthResponseToVerifyOtpResponse} from '@/services/auth/authProfileMappers';
 
 type LoginWithPhoneRequest = {
   phoneNumber: string;
@@ -33,6 +34,7 @@ export type VerifyOtpResponse = {
   gender?: Gender;
   level?: number;
   accessToken?: string;
+  refreshToken?: string;
   interests?: Interest[];
   photos?: UserProfilePhoto[];
   userExists?: boolean;
@@ -130,6 +132,7 @@ export const verifyLoginOtp = async (payload: VerifyOtpRequest): Promise<VerifyO
     userExists?: boolean;
     registrationToken?: string | null;
     accessToken?: string | null;
+    refreshToken?: string | null;
     user?: {
       id?: string;
       name?: string;
@@ -146,38 +149,7 @@ export const verifyLoginOtp = async (payload: VerifyOtpRequest): Promise<VerifyO
       throw new Error('Doğrulama kodu geçersiz.');
     }
 
-    const userPhotos: UserProfilePhoto[] = Array.isArray(data.user?.photos)
-      ? data.user!.photos
-          .map((photo, index) => {
-            const photoUrl = typeof photo?.photoUrl === 'string'
-              ? photo.photoUrl
-              : typeof photo?.url === 'string'
-                ? photo.url
-                : null;
-            if (!photoUrl) {
-              return null;
-            }
-            return {
-              id: typeof photo?.id === 'string' ? photo.id : `photo-${index}`,
-              photoUrl
-            };
-          })
-          .filter((photo): photo is UserProfilePhoto => photo !== null)
-      : [];
-
-    return {
-      id: data.user?.id,
-      name: data.user?.name,
-      phoneNumber: data.user?.phoneNumber,
-      birthDate: data.user?.birthDate,
-      gender: data.user?.gender,
-      locationDistance: data.user?.nearbyEventsRadiusKm,
-      accessToken: data.accessToken ?? undefined,
-      photos: userPhotos,
-      interests: [],
-      userExists: data.userExists === true,
-      registrationToken: typeof data.registrationToken === 'string' ? data.registrationToken : undefined
-    };
+    return mapAuthResponseToVerifyOtpResponse(data);
   } catch (error) {
     const message =
       error instanceof Error && error.message === 'Doğrulama kodu geçersiz.'
@@ -377,8 +349,21 @@ export const registerUser = async (payload: RegisterUserRequest): Promise<Verify
       }
     });
 
-    const data = response.data as VerifyOtpResponse;
-    return data;
+    const data = response.data as {
+      accessToken?: string | null;
+      refreshToken?: string | null;
+      user?: {
+        id?: string;
+        name?: string;
+        phoneNumber?: string;
+        birthDate?: string;
+        gender?: Gender;
+        nearbyEventsRadiusKm?: number;
+        photos?: Array<{id?: string; photoUrl?: string; url?: string}>;
+      } | null;
+    };
+
+    return mapAuthResponseToVerifyOtpResponse(data);
   } catch (error) {
     throw new Error(getServiceErrorMessage(error));
   }

@@ -17,13 +17,17 @@ import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
-import * as Location from 'expo-location';
 import {EmptyStateCreateEvent} from '@/components/EmptyStateCreateEvent';
 import {Screen} from '@/components/Screen';
 import {palette} from '@/theme/colors';
 import {RootStackParamList} from '@/navigation/types';
 import {useAppContext} from '@/context/AppContext';
 import {getHomeFeed, HomeEvent, HomeInterestGroup} from '@/services/home/homeService';
+import {
+  checkForegroundLocationPermission,
+  getCurrentLocationCoords,
+  requestForegroundLocationPermission
+} from '@/services/location/locationService';
 import {showErrorToast} from '@/services/ui/toastService';
 import {getRefreshVersion, subscribeRefresh} from '@/services/refresh/refreshStore';
 
@@ -64,8 +68,8 @@ export const DashboardScreen: React.FC = () => {
 
   const refreshLocationPermission = useCallback(async () => {
     try {
-      const current = await Location.getForegroundPermissionsAsync();
-      if (current.granted) {
+      const granted = await checkForegroundLocationPermission();
+      if (granted) {
         setPermission('GRANTED');
         return;
       }
@@ -78,12 +82,10 @@ export const DashboardScreen: React.FC = () => {
   const loadHome = useCallback(async () => {
     try {
       setIsLoadingHome(true);
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced
-      });
+      const position = await getCurrentLocationCoords();
       const response = await getHomeFeed({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+        lat: position.lat,
+        lng: position.lng,
         accessToken: state.user?.accessToken
       });
       setHomeFeed(response);
@@ -157,9 +159,9 @@ export const DashboardScreen: React.FC = () => {
 
     try {
       setIsRequestingPermission(true);
-      const result = await Location.requestForegroundPermissionsAsync();
+      const result = await requestForegroundLocationPermission();
 
-      if (result.granted) {
+      if (result) {
         setPermission('GRANTED');
         return;
       }

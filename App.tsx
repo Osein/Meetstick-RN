@@ -70,8 +70,12 @@ export default function App() {
         setInitialLegalAgreements(startupPayload.legalAgreements);
 
         if (startupPayload.userProfile) {
-          await secureKeyValueStorage.saveUserProfile(startupPayload.userProfile);
-          setInitialUser(mapVerifiedProfileToUser(startupPayload.userProfile));
+          const mergedProfile = {
+            ...(savedProfile || {}),
+            ...startupPayload.userProfile
+          };
+          await secureKeyValueStorage.saveUserProfile(mergedProfile);
+          setInitialUser(mapVerifiedProfileToUser(mergedProfile));
         } else if (savedProfile?.accessToken && startupPayload.hasUserFieldInSplash) {
           await secureKeyValueStorage.clearUserProfile();
           setInitialUser(undefined);

@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import * as Localization from 'expo-localization';
 import {useTranslation} from 'react-i18next';
@@ -10,7 +10,7 @@ import {RootStackParamList} from '@/navigation/types';
 import {Screen} from '@/components/Screen';
 import {palette} from '@/theme/colors';
 import {useAppContext} from '@/context/AppContext';
-import {cancelJoinEvent, EventDetailData, getEventById, joinEvent} from '@/services/events/eventsService';
+import {cancelJoinEvent, deleteEvent, EventDetailData, getEventById, joinEvent} from '@/services/events/eventsService';
 import {showErrorToast, showSuccessToast} from '@/services/ui/toastService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EventDetail'>;
@@ -54,12 +54,16 @@ const formatEventTimeRange = (startValue: string, endValue: string | null | unde
   return `${formatter.format(start)} - ${formatter.format(end)}`;
 };
 
-const getJoinAction = (status: EventDetailData['myJoinStatus']) => {
-  if (status === 'pending') {
-    return 'cancel';
+const getJoinAction = (event: Pick<EventDetailData, 'hasActiveJoinRequest' | 'myJoinStatus'> | null) => {
+  if (!event) {
+    return 'join';
   }
-  if (status === 'accepted') {
+
+  if (event.myJoinStatus === 'accepted') {
     return 'joined';
+  }
+  if (event.hasActiveJoinRequest) {
+    return 'cancel';
   }
   return 'join';
 };
@@ -138,37 +142,55 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
     return exists ? accepted : [host, ...accepted].slice(0, 5);
   }, [event]);
 
-  const joinAction = getJoinAction(event?.myJoinStatus ?? null);
+  const joinAction = getJoinAction(
+    event
+      ? {
+          hasActiveJoinRequest: event.hasActiveJoinRequest,
+          myJoinStatus: event.myJoinStatus
+        }
+      : null
+  );
 
-  const isCurrentUserHost = useMemo(() => {
-    if (!event) {
-      return false;
-    }
-
-    if (state.user?.id && event.host?.id) {
-      return state.user.id === event.host.id;
-    }
-
-    return event.isHost;
-  }, [event, state.user?.id]);
+  const isCurrentUserHost = event?.isHost === true;
+  const shouldShowCta = isCurrentUserHost || joinAction !== 'joined';
+  const ctaLabel = isCurrentUserHost
+    ? t('eventDetail.cta.deleteEvent')
+    : joinAction === 'cancel'
+      ? t('eventDetail.cta.leaveJoin')
+      : joinAction === 'joined'
+        ? t('eventDetail.cta.joined')
+        : t('eventDetail.cta.sendJoinRequest');
+  const ctaIconName = isCurrentUserHost
+    ? 'trash-outline'
+    : joinAction === 'joined'
+      ? 'checkmark'
+      : 'arrow-forward';
+  const isCtaDisabled = isSubmittingJoin;
 
   const onJoinPress = async () => {
-    if (!event || isCurrentUserHost || isSubmittingJoin || joinAction === 'joined') {
+    if (!event || isSubmittingJoin || joinAction === 'joined') {
       return;
     }
 
     try {
       setIsSubmittingJoin(true);
 
+      if (isCurrentUserHost) {
+        await deleteEvent({id: event.id, accessToken: state.user?.accessToken});
+        showSuccessToast('Etkinlik silindi.');
+        navigation.goBack();
+        return;
+      }
+
       if (joinAction === 'cancel') {
         await cancelJoinEvent({id: event.id, accessToken: state.user?.accessToken});
-        setEvent(prev => (prev ? {...prev, myJoinStatus: null} : prev));
-        showSuccessToast('Katılma isteği geri çekildi.');
+        setEvent(prev => (prev ? {...prev, hasActiveJoinRequest: false, myJoinStatus: null} : prev));
+        showSuccessToast('Katılmaktan vazgeçildi.');
         return;
       }
 
       await joinEvent({id: event.id, accessToken: state.user?.accessToken});
-      setEvent(prev => (prev ? {...prev, myJoinStatus: 'pending'} : prev));
+      setEvent(prev => (prev ? {...prev, hasActiveJoinRequest: true, myJoinStatus: 'pending'} : prev));
       showSuccessToast('Katılma isteği gönderildi.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'İşlem gerçekleştirilemedi.';
@@ -191,7 +213,7 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
   const totalParticipants = typeof event.acceptedCount === 'number' ? event.acceptedCount : event.acceptedParticipantsCount;
   const extraParticipantCount = Math.max(0, totalParticipants - participants.length);
   const heroImage = event.photos[0];
-  const showHostInsights = isCurrentUserHost;
+  const showHostInsights = event.isHost === true;
   const hasMapLocation = typeof event.latitude === 'number' && typeof event.longitude === 'number';
 
   return (
@@ -199,7 +221,7 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
       <View style={styles.container}>
         <ScrollView
           style={{marginTop: -insets.top}}
-          contentContainerStyle={[styles.scrollContent, !isCurrentUserHost ? styles.scrollContentWithCta : null]}
+          contentContainerStyle={[styles.scrollContent, shouldShowCta ? styles.scrollContentWithCta : null]}
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.heroSection, {height: 280 + insets.top}]}>
@@ -268,12 +290,30 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
                 </View>
               </View>
 
-              <View style={styles.descriptionSection}>
+              <View style={styles.sectionBlockNoBorder}>
+                <Text style={styles.sectionLabel}>{t('eventDetail.owner.title')}</Text>
+                <View style={styles.ownerProfileRow}>
+                  {event.host?.avatar ? (
+                    <Image source={{uri: event.host.avatar}} style={styles.ownerAvatar} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.ownerAvatarPlaceholder} />
+                  )}
+                  <View style={styles.ownerMeta}>
+                    <Text style={styles.ownerName}>{event.host?.name || '-'}</Text>
+                    <Text style={styles.ownerStatus}>
+                      {event.host?.isApproved ? t('eventDetail.owner.approved') : t('eventDetail.owner.notApproved')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.sectionBlock}>
                 <Text style={styles.sectionLabel}>{t('eventDetail.about.title')}</Text>
                 <Text style={styles.descriptionText}>{event.description || '-'}</Text>
               </View>
 
-              <View style={styles.participantsSection}>
+              {/*
+              <View style={styles.sectionBlock}>
                 <View style={styles.participantsHeader}>
                   <Text style={styles.participantsTitle}>
                     {t('eventDetail.participants.title')} ({totalParticipants})
@@ -307,10 +347,11 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
                   ) : null}
                 </ScrollView>
               </View>
+              */}
 
               {showHostInsights ? (
-                <View style={styles.ownerSection}>
-                  <Text style={styles.sectionLabel}>OWNER INSIGHTS</Text>
+                <View style={styles.sectionBlock}>
+                  <Text style={styles.sectionLabel}>{t('eventDetail.ownerInsights.title')}</Text>
                   <View style={styles.ownerCard}>
                     <Text style={styles.ownerCardTitle}>Applicants ({event.applicantsCount})</Text>
                     <Text style={styles.ownerCardText} numberOfLines={2}>
@@ -329,26 +370,22 @@ export const EventDetailScreen: React.FC<Props> = ({navigation, route}) => {
           </View>
         </ScrollView>
 
-        {!isCurrentUserHost ? (
-          <View style={styles.bottomCta}>
-            <View>
-              <Text style={styles.priceLabel}>{t('eventDetail.price.label')}</Text>
-              <Text style={styles.priceValue}>{t('eventDetail.price.value')}</Text>
-            </View>
-
+        {shouldShowCta ? (
+          <View style={[styles.bottomCta, {paddingBottom: 0}]}>
             <TouchableOpacity
-              style={[styles.joinButton, isSubmittingJoin || joinAction === 'joined' ? styles.joinButtonDisabled : null]}
+              style={[styles.joinButton, isCtaDisabled ? styles.joinButtonDisabled : null]}
               onPress={onJoinPress}
-              disabled={isSubmittingJoin || joinAction === 'joined'}
+              disabled={isCtaDisabled}
+              activeOpacity={0.85}
             >
-              <Text style={styles.joinButtonText}>
-                {joinAction === 'cancel'
-                  ? t('eventDetail.cta.cancelRequest')
-                  : joinAction === 'joined'
-                    ? t('eventDetail.cta.joined')
-                    : t('eventDetail.cta.join')}
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              {isSubmittingJoin ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.joinButtonText}>{ctaLabel}</Text>
+                  <Ionicons name={ctaIconName} size={16} color="#FFFFFF" />
+                </>
+              )}
             </TouchableOpacity>
           </View>
         ) : null}
@@ -475,8 +512,15 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: palette.primary
   },
-  descriptionSection: {
-    rowGap: 12
+  sectionBlock: {
+    rowGap: 12,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#E7E5E4'
+  },
+  sectionBlockNoBorder: {
+    rowGap: 12,
+    paddingTop: 18
   },
   sectionLabel: {
     color: '#78716C',
@@ -489,9 +533,6 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 16,
     lineHeight: 26
-  },
-  participantsSection: {
-    rowGap: 16
   },
   participantsHeader: {
     flexDirection: 'row',
@@ -553,8 +594,37 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700'
   },
-  ownerSection: {
-    rowGap: 10
+  ownerProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 12
+  },
+  ownerAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5F5F4'
+  },
+  ownerAvatarPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5F5F4'
+  },
+  ownerMeta: {
+    flex: 1,
+    rowGap: 4
+  },
+  ownerName: {
+    color: '#0F172A',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700'
+  },
+  ownerStatus: {
+    color: '#78716C',
+    fontSize: 14,
+    lineHeight: 20
   },
   ownerCard: {
     borderWidth: 1,
@@ -582,8 +652,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F5F5F4',
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
+    paddingTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
     columnGap: 24

@@ -6,7 +6,7 @@ const normalizeInterest = (item: unknown): Interest | null => {
     return null;
   }
 
-  const raw = item as {id?: unknown; name?: unknown; title?: unknown};
+  const raw = item as {id?: unknown; name?: unknown; title?: unknown; isFavorite?: unknown};
   const id =
     typeof raw.id === 'string' || typeof raw.id === 'number'
       ? raw.id
@@ -31,7 +31,8 @@ const normalizeInterest = (item: unknown): Interest | null => {
 
   return {
     id,
-    title: title.trim()
+    title: title.trim(),
+    isFavorite: raw.isFavorite === true
   };
 };
 
@@ -50,5 +51,22 @@ export const getInterests = async (): Promise<Interest[]> => {
     return rawList.map(normalizeInterest).filter((item): item is Interest => item !== null);
   } catch (error) {
     throw new Error(getServiceErrorMessage(error, 'İlgi alanları alınamadı.'));
+  }
+};
+
+export const setInterestFavorite = async ({
+  interestId,
+  isFavorite
+}: {
+  interestId: string | number;
+  isFavorite: boolean;
+}): Promise<void> => {
+  try {
+    await networkClient.post('/v1/interests/favorite', {
+      interestId: String(interestId),
+      isFavorite
+    });
+  } catch (error) {
+    throw new Error(getServiceErrorMessage(error, 'Favori durumu güncellenemedi.'));
   }
 };

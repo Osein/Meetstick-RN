@@ -14,6 +14,7 @@ import {RegisterPhotosScreen} from '@/screens/Register/RegisterPhotosScreen';
 import {MainTabs} from '@/navigation/MainTabs';
 import {EventListScreen} from '@/screens/Events/EventListScreen';
 import {EventDetailScreen} from '@/screens/Events/EventDetailScreen';
+import {InterestMeetingsScreen} from '@/screens/Discover/InterestMeetingsScreen';
 import {PersonDetailScreen} from '@/screens/Person/PersonDetailScreen';
 import {LocationSettingsScreen} from '@/screens/Profile/LocationSettingsScreen';
 import {AgreementsScreen} from '@/screens/Profile/AgreementsScreen';
@@ -76,6 +77,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="RegisterPhotos" component={RegisterPhotosScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="EventList" component={EventListScreen} />
+        <Stack.Screen name="InterestMeetings" component={InterestMeetingsScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="PersonDetail" component={PersonDetailScreen} />
         <Stack.Screen name="LocationSettings" component={LocationSettingsScreen} />
